@@ -1,5 +1,7 @@
 # Environment secrets
 .env
+.env.dev
+.env.prod
 
 # Claude / AI rules
 CLAUDE.md

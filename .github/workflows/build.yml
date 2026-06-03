@@ -1,0 +1,172 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-android:
+    name: Build Android APKs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build dev APK
+        run: |
+          flutter build apk \
+            --flavor dev \
+            --target lib/main_dev.dart \
+            --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_DEV }} \
+            --release
+          mv build/app/outputs/flutter-apk/app-dev-release.apk build/app/outputs/flutter-apk/chaty-agent-dev-${{ github.ref_name }}.apk
+
+      - name: Build prod APK
+        run: |
+          flutter build apk \
+            --flavor prod \
+            --target lib/main_prod.dart \
+            --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_PROD }} \
+            --release
+          mv build/app/outputs/flutter-apk/app-prod-release.apk build/app/outputs/flutter-apk/chaty-agent-prod-${{ github.ref_name }}.apk
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: build/app/outputs/flutter-apk/*.apk
+
+  build-ios:
+    name: Build iOS IPAs
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Import signing certificate
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          security create-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security list-keychains -s build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+
+      - name: Import dev provisioning profile
+        env:
+          IOS_PROFILE_DEV_BASE64: ${{ secrets.IOS_PROFILE_DEV_BASE64 }}
+        run: |
+          echo "$IOS_PROFILE_DEV_BASE64" | base64 --decode > dev.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp dev.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Import prod provisioning profile
+        env:
+          IOS_PROFILE_PROD_BASE64: ${{ secrets.IOS_PROFILE_PROD_BASE64 }}
+        run: |
+          echo "$IOS_PROFILE_PROD_BASE64" | base64 --decode > prod.mobileprovision
+          cp prod.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Build dev IPA
+        run: |
+          flutter build ipa \
+            --flavor dev \
+            --target lib/main_dev.dart \
+            --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_DEV }} \
+            --release \
+            --export-options-plist=ios/ExportOptions-dev.plist
+          mv build/ios/ipa/*.ipa build/ios/ipa/chaty-agent-dev-${{ github.ref_name }}.ipa
+
+      - name: Build prod IPA
+        run: |
+          flutter build ipa \
+            --flavor prod \
+            --target lib/main_prod.dart \
+            --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY_PROD }} \
+            --release \
+            --export-options-plist=ios/ExportOptions-prod.plist
+          mv build/ios/ipa/*.ipa build/ios/ipa/chaty-agent-prod-${{ github.ref_name }}.ipa
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipas
+          path: build/ios/ipa/*.ipa
+
+  release:
+    name: Create GitHub Release
+    needs: [build-android, build-ios]
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apks
+          path: artifacts/android
+
+      - name: Download iOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-ipas
+          path: artifacts/ios
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-dev') }}
+          files: |
+            artifacts/android/*.apk
+            artifacts/ios/*.ipa
+
+  notify:
+    name: Send Email Notification
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Gmail
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "Chaty Agent ${{ github.ref_name }} — Build Ready"
+          to: devmostafasoliman@gmail.com
+          from: Chaty Agent CI <${{ secrets.GMAIL_USERNAME }}>
+          body: |
+            New build released: ${{ github.ref_name }}
+
+            Download from GitHub Releases:
+            https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+
+            Artifacts:
+            - chaty-agent-dev-${{ github.ref_name }}.apk
+            - chaty-agent-prod-${{ github.ref_name }}.apk
+            - chaty-agent-dev-${{ github.ref_name }}.ipa
+            - chaty-agent-prod-${{ github.ref_name }}.ipa
