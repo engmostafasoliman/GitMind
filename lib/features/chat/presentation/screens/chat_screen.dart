@@ -26,7 +26,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Chat'),
+        title: const Text('Chaty Agent'),
         centerTitle: true,
         leading: BackButton(onPressed: () => Navigator.maybePop(context)),
       ),
