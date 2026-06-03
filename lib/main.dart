@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+
+import 'core/di/injection.dart';
 import 'features/chat/presentation/screens/chat_screen.dart';
 
 void main() {
+  setupDependencies();
   runApp(const MyApp());
 }
 

@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
+
+import '../../domain/entities/chat_message.dart';
 import 'message_bubble.dart';
 
 class MessageList extends StatelessWidget {
   final ScrollController scrollController;
+  final List<ChatMessage> messages;
 
-  const MessageList({super.key, required this.scrollController});
-
-  static const List<(String text, bool isUser)> _mockMessages = [
-    ('Hello! How can I help you today?', false),
-    ('Explain how AI works', true),
-    (
-      'AI works by training models on large datasets to recognize patterns and make predictions.',
-      false
-    ),
-  ];
+  const MessageList({
+    super.key,
+    required this.scrollController,
+    required this.messages,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (_mockMessages.isEmpty) {
+    if (messages.isEmpty) {
       return const Center(
         child: Text(
           'Start a conversation',
@@ -29,10 +27,13 @@ class MessageList extends StatelessWidget {
     return ListView.builder(
       controller: scrollController,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      itemCount: _mockMessages.length,
+      itemCount: messages.length,
       itemBuilder: (context, index) {
-        final (text, isUser) = _mockMessages[index];
-        return MessageBubble(text: text, isUser: isUser);
+        final message = messages[index];
+        return MessageBubble(
+          text: message.text,
+          isUser: message.role == 'user',
+        );
       },
     );
   }
