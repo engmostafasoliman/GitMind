@@ -10,7 +10,9 @@ final getIt = GetIt.instance;
 
 void setupDependencies() {
   getIt.registerLazySingleton<GeminiChatService>(
-    () => const GeminiChatService(apiKey: 'YOUR_GEMINI_API_KEY'),
+    () => const GeminiChatService(
+      apiKey: String.fromEnvironment('GEMINI_API_KEY'),
+    ),
   );
 
   getIt.registerLazySingleton<ChatRepository>(
