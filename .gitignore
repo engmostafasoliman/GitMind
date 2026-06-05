@@ -1,8 +1,3 @@
-# Environment secrets
-.env
-.env.dev
-.env.prod
-
 # Claude / AI rules
 CLAUDE.md
 .claude/
@@ -10,6 +5,11 @@ CLAUDE.md
 .windsurfrules
 .aider*
 .copilot/
+
+# Environment secrets
+.env
+.env.dev
+.env.prod
 
 # Miscellaneous
 *.class
@@ -56,11 +56,3 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-
-
-
-
-#  Run the app with:
-#  flutter run --dart-define-from-file=.env
-#  Build with:
-#  flutter build apk --dart-define-from-file=.env
