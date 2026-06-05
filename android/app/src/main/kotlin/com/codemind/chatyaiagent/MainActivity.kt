@@ -1,4 +1,4 @@
-package com.example.ai_agent
+package com.codemind.chatyaiagent
 
 import io.flutter.embedding.android.FlutterActivity
 
