@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-android:
     name: Build Android APKs
@@ -68,29 +71,3 @@ jobs:
           draft: false
           prerelease: ${{ contains(github.ref_name, '-dev') }}
           files: artifacts/android/*.apk
-
-  notify:
-    name: Send Email Notification
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send Gmail
-        uses: dawidd6/action-send-mail@v4
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          secure: false
-          username: ${{ secrets.GMAIL_USERNAME }}
-          password: ${{ secrets.GMAIL_APP_PASSWORD }}
-          subject: "Chaty Agent ${{ github.ref_name }} — Build Ready"
-          to: devmostafasoliman@gmail.com
-          from: Chaty Agent CI <${{ secrets.GMAIL_USERNAME }}>
-          body: |
-            New build released: ${{ github.ref_name }}
-
-            Download from GitHub Releases:
-            https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}
-
-            Artifacts:
-            - chaty-agent-dev-${{ github.ref_name }}.apk
-            - chaty-agent-prod-${{ github.ref_name }}.apk
