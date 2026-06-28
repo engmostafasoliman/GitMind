@@ -5,6 +5,7 @@ import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
 import 'core/theme/theme_cubit.dart';
 import 'features/sign_in/presentation/screens/sign_in_screen.dart';
+import 'features/repo_list/presentation/screens/repo_list_screen.dart';
 import 'features/chat/presentation/screens/chat_screen.dart';
 
 void main() {
@@ -38,7 +39,13 @@ class MyApp extends StatelessWidget {
             darkTheme: ThemeData.dark(useMaterial3: true),
             home: SignInScreen(
               onSignIn: () => _navigatorKey.currentState?.pushReplacement(
-                MaterialPageRoute(builder: (_) => const ChatScreen()),
+                MaterialPageRoute(
+                  builder: (_) => RepoListScreen(
+                    onRepoTap: (id) => _navigatorKey.currentState?.push(
+                      MaterialPageRoute(builder: (_) => const ChatScreen()),
+                    ),
+                  ),
+                ),
               ),
             ),
           );
