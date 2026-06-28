@@ -15,6 +15,8 @@ import '../../features/repo_list/domain/usecases/get_repo_detail_usecase.dart';
 import '../../features/repo_list/domain/usecases/generate_summary_usecase.dart';
 import '../../features/repo_list/presentation/cubit/repo_list_cubit.dart';
 import '../../features/repo_detail/presentation/cubit/repo_detail_cubit.dart';
+import '../../features/profile/domain/entities/user_entity.dart';
+import '../../features/profile/presentation/cubit/profile_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -39,6 +41,9 @@ void setupDependencies(AppConfig config) {
   );
   getIt.registerFactory<RepoDetailCubit>(
     () => RepoDetailCubit(getIt(), getIt()),
+  );
+  getIt.registerFactory<ProfileCubit>(
+    () => ProfileCubit(getIt(), kMockUser),
   );
   getIt.registerLazySingleton<GeminiChatService>(
     () => GeminiChatService(apiKey: config.geminiApiKey),

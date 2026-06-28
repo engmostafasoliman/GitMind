@@ -7,6 +7,7 @@ import 'core/theme/theme_cubit.dart';
 import 'features/sign_in/presentation/screens/sign_in_screen.dart';
 import 'features/repo_list/presentation/screens/repo_list_screen.dart';
 import 'features/repo_detail/presentation/screens/repo_detail_screen.dart';
+import 'features/profile/presentation/screens/profile_screen.dart';
 
 void main() {
   const config = AppConfig(
@@ -42,8 +43,15 @@ class MyApp extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (_) => RepoListScreen(
                     onRepoTap: (id) => _navigatorKey.currentState?.push(
+                      MaterialPageRoute(builder: (_) => RepoDetailScreen(repoId: id)),
+                    ),
+                    onProfile: () => _navigatorKey.currentState?.push(
                       MaterialPageRoute(
-                        builder: (_) => RepoDetailScreen(repoId: id),
+                        builder: (_) => ProfileScreen(
+                          onRepoTap: (id) => _navigatorKey.currentState?.push(
+                            MaterialPageRoute(builder: (_) => RepoDetailScreen(repoId: id)),
+                          ),
+                        ),
                       ),
                     ),
                   ),
