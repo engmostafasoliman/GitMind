@@ -13,14 +13,15 @@ import '../widgets/repo_card_skeleton.dart';
 class RepoListScreen extends StatelessWidget {
   final ValueChanged<String>? onRepoTap;
   final VoidCallback? onProfile;
+  final VoidCallback? onSettings;
 
-  const RepoListScreen({super.key, this.onRepoTap, this.onProfile});
+  const RepoListScreen({super.key, this.onRepoTap, this.onProfile, this.onSettings});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => getIt<RepoListCubit>()..load(),
-      child: _RepoListView(onRepoTap: onRepoTap, onProfile: onProfile),
+      child: _RepoListView(onRepoTap: onRepoTap, onProfile: onProfile, onSettings: onSettings),
     );
   }
 }
@@ -28,7 +29,8 @@ class RepoListScreen extends StatelessWidget {
 class _RepoListView extends StatelessWidget {
   final ValueChanged<String>? onRepoTap;
   final VoidCallback? onProfile;
-  const _RepoListView({this.onRepoTap, this.onProfile});
+  final VoidCallback? onSettings;
+  const _RepoListView({this.onRepoTap, this.onProfile, this.onSettings});
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +49,7 @@ class _RepoListView extends StatelessWidget {
                     searchQuery: query,
                     onSearch: (q) => context.read<RepoListCubit>().search(q),
                     onProfile: onProfile,
+                    onSettings: onSettings,
                   );
                 },
               ),

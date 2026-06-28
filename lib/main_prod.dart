@@ -8,6 +8,7 @@ import 'features/sign_in/presentation/screens/sign_in_screen.dart';
 import 'features/repo_list/presentation/screens/repo_list_screen.dart';
 import 'features/repo_detail/presentation/screens/repo_detail_screen.dart';
 import 'features/profile/presentation/screens/profile_screen.dart';
+import 'features/settings/presentation/screens/settings_screen.dart';
 
 void main() {
   const config = AppConfig(
@@ -51,8 +52,24 @@ class MyApp extends StatelessWidget {
                           onRepoTap: (id) => _navigatorKey.currentState?.push(
                             MaterialPageRoute(builder: (_) => RepoDetailScreen(repoId: id)),
                           ),
+                          onSettings: () => _navigatorKey.currentState?.push(
+                            MaterialPageRoute(builder: (_) => SettingsScreen(
+                              onSignOut: () => _navigatorKey.currentState?.pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => SignInScreen(onSignIn: () {})),
+                                (route) => false,
+                              ),
+                            )),
+                          ),
                         ),
                       ),
+                    ),
+                    onSettings: () => _navigatorKey.currentState?.push(
+                      MaterialPageRoute(builder: (_) => SettingsScreen(
+                        onSignOut: () => _navigatorKey.currentState?.pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => SignInScreen(onSignIn: () {})),
+                          (route) => false,
+                        ),
+                      )),
                     ),
                   ),
                 ),
