@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
+import 'core/theme/theme_cubit.dart';
+import 'features/sign_in/presentation/screens/sign_in_screen.dart';
 import 'features/chat/presentation/screens/chat_screen.dart';
 
 void main() {
@@ -10,25 +13,38 @@ void main() {
     appName: 'Chaty Agent Dev',
     geminiApiKey: String.fromEnvironment('GEMINI_API_KEY'),
   );
-
   setupDependencies(config);
-  runApp(MyApp(appName: config.appName));
+  runApp(MyApp(appName: config.appName, isDev: true));
 }
+
+final _navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatelessWidget {
   final String appName;
-  const MyApp({super.key, required this.appName});
+  final bool isDev;
+  const MyApp({super.key, required this.appName, this.isDev = false});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: appName,
-      debugShowCheckedModeBanner: true,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+    return BlocProvider<ThemeCubit>(
+      create: (_) => getIt<ThemeCubit>(),
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) {
+          return MaterialApp(
+            title: appName,
+            debugShowCheckedModeBanner: isDev,
+            navigatorKey: _navigatorKey,
+            themeMode: themeMode,
+            theme: ThemeData.light(useMaterial3: true),
+            darkTheme: ThemeData.dark(useMaterial3: true),
+            home: SignInScreen(
+              onSignIn: () => _navigatorKey.currentState?.pushReplacement(
+                MaterialPageRoute(builder: (_) => const ChatScreen()),
+              ),
+            ),
+          );
+        },
       ),
-      home: const ChatScreen(),
     );
   }
 }
