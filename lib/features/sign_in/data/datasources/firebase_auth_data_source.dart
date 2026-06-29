@@ -21,8 +21,19 @@ class FirebaseAuthDataSource {
       ..addScope('read:user')
       ..addScope('public_repo');
 
-    final credential = await _auth.signInWithProvider(provider);
-    final token = (credential.credential as OAuthCredential?)?.accessToken;
+    final userCredential = await _auth.signInWithProvider(provider);
+
+    // Extract token — on iOS the runtime type may differ from OAuthCredential
+    // so we fall back to dynamic access to avoid a hard-cast TypeError
+    String? token;
+    final raw = userCredential.credential;
+    if (raw is OAuthCredential) {
+      token = raw.accessToken;
+    } else {
+      try {
+        token = (raw as dynamic)?.accessToken as String?;
+      } catch (_) {}
+    }
 
     if (token != null) {
       await _storage.write(key: 'github_access_token', value: token);
@@ -46,17 +57,11 @@ class FirebaseAuthDataSource {
       final name = fb.displayName ?? '';
       return UserEntity(
         name: name,
-        handle: '',
+        handle: fb.providerData.firstOrNull?.uid ?? '',
         initials: _initials(name),
         avatarUrl: fb.photoURL,
-        bio: '',
-        location: '',
-        company: '',
-        joined: '',
-        followers: 0,
-        following: 0,
-        publicRepos: 0,
-        stars: 0,
+        bio: '', location: '', company: '', joined: '',
+        followers: 0, following: 0, publicRepos: 0, stars: 0,
       );
     }
 

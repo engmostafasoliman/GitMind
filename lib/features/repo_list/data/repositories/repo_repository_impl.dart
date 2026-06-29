@@ -2,10 +2,10 @@ import '../../../../core/result/api_result.dart';
 import '../../domain/entities/repo_entity.dart';
 import '../../domain/entities/repo_summary_entity.dart';
 import '../../domain/repositories/repo_repository.dart';
-import '../datasources/repo_mock_data_source.dart';
+import '../datasources/repo_data_source.dart';
 
 class RepoRepositoryImpl implements RepoRepository {
-  final RepoMockDataSource _dataSource;
+  final RepoDataSource _dataSource;
   const RepoRepositoryImpl(this._dataSource);
 
   @override

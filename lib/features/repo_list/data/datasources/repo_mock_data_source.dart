@@ -1,8 +1,9 @@
 import '../../domain/entities/repo_summary_entity.dart';
 import '../models/repo_model.dart';
 import '../models/repo_summary_model.dart';
+import 'repo_data_source.dart';
 
-class RepoMockDataSource {
+class RepoMockDataSource implements RepoDataSource {
   static const _summaries = {
     '1': RepoSummaryModel(
       whatItDoes: 'A CLI tool that automates database schema migrations across dev, staging, and production using a declarative HCL schema format with versioned migration plans.',
@@ -50,17 +51,20 @@ class RepoMockDataSource {
     RepoModel(id: '6', name: 'sentinel-auth', owner: 'octolabs', description: 'Drop-in authentication and session management service with OAuth, SAML, and passkeys.', language: 'Python', stars: 5210, updatedAgo: '6h ago', license: 'Apache-2.0', lastCommit: 'Jun 19, 2026', summarized: true),
   ];
 
+  @override
   Future<List<RepoModel>> getRepos() async {
     await Future.delayed(const Duration(milliseconds: 1100));
     return _repos.map((r) => _withSummary(r)).toList();
   }
 
+  @override
   Future<RepoModel> getRepoById(String id) async {
     await Future.delayed(const Duration(milliseconds: 400));
     final repo = _repos.firstWhere((r) => r.id == id);
     return _withSummary(repo);
   }
 
+  @override
   Future<RepoSummaryModel> generateSummary(String repoId) async {
     await Future.delayed(const Duration(milliseconds: 2200));
     return const RepoSummaryModel(

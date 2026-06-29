@@ -7,7 +7,8 @@ import '../../features/chat/data/services/gemini_chat_service.dart';
 import '../../features/chat/domain/repositories/chat_repository.dart';
 import '../../features/chat/domain/usecases/send_message_use_case.dart';
 import '../../features/chat/presentation/cubit/send_message_cubit.dart';
-import '../../features/repo_list/data/datasources/repo_mock_data_source.dart';
+import '../../features/repo_list/data/datasources/github_repo_data_source.dart';
+import '../../features/repo_list/data/datasources/repo_data_source.dart';
 import '../../features/repo_list/data/repositories/repo_repository_impl.dart';
 import '../../features/repo_list/domain/repositories/repo_repository.dart';
 import '../../features/repo_list/domain/usecases/get_repos_usecase.dart';
@@ -43,7 +44,7 @@ void setupDependencies(AppConfig config) {
   );
 
   // Repos
-  getIt.registerLazySingleton<RepoMockDataSource>(() => RepoMockDataSource());
+  getIt.registerLazySingleton<RepoDataSource>(() => GitHubRepoDataSource());
   getIt.registerLazySingleton<RepoRepository>(
     () => RepoRepositoryImpl(getIt()),
   );

@@ -33,6 +33,46 @@ class RepoModel extends RepoEntity {
             : null,
       );
 
+  factory RepoModel.fromGitHub(Map<String, dynamic> json) {
+    final updatedAt = json['updated_at'] as String? ?? '';
+    final pushedAt = json['pushed_at'] as String? ?? updatedAt;
+    return RepoModel(
+      id: (json['id'] as int).toString(),
+      name: json['name'] as String? ?? '',
+      owner: (json['owner'] as Map<String, dynamic>?)?['login'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      language: json['language'] as String? ?? 'Unknown',
+      stars: json['stargazers_count'] as int? ?? 0,
+      updatedAgo: _timeAgo(updatedAt),
+      license: (json['license'] as Map<String, dynamic>?)?['spdx_id'] as String? ?? 'No license',
+      lastCommit: _formatDate(pushedAt),
+      summarized: false,
+    );
+  }
+
+  static String _timeAgo(String iso) {
+    if (iso.isEmpty) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 30) return '${diff.inDays}d ago';
+    if (diff.inDays < 365) return '${(diff.inDays / 30).floor()}mo ago';
+    return '${(diff.inDays / 365).floor()}y ago';
+  }
+
+  static String _formatDate(String iso) {
+    if (iso.isEmpty) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
