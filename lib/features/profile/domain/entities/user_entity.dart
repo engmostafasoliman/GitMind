@@ -2,6 +2,7 @@ class UserEntity {
   final String name;
   final String handle;
   final String initials;
+  final String? avatarUrl;
   final String bio;
   final String location;
   final String company;
@@ -15,6 +16,7 @@ class UserEntity {
     required this.name,
     required this.handle,
     required this.initials,
+    this.avatarUrl,
     required this.bio,
     required this.location,
     required this.company,

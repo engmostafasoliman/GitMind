@@ -1,3 +1,4 @@
+#include "../Pods/Target Support Files/Pods-Runner/Pods-Runner.profile-dev.xcconfig"
 #include "Flutter/Generated.xcconfig"
 PRODUCT_BUNDLE_IDENTIFIER=com.codemind.chatyaiagent.dev
 PRODUCT_NAME=Chaty Agent Dev

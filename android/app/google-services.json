@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "336914432908",
+    "project_id": "repo-insights-app",
+    "storage_bucket": "repo-insights-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:336914432908:android:e47b4454dbb96cbb78cca9",
+        "android_client_info": {
+          "package_name": "com.codemind.chatyaiagent.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCj6hjoy_YOZhuIBJC4j0eHuLbByoATo0c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
