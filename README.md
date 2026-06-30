@@ -1,23 +1,40 @@
-# Chaty Agent
+# GitMind
 
-A Flutter chat application powered by Google Gemini AI, built with clean architecture and production-ready CI/CD.
+A Flutter app that lets you explore your GitHub repositories through AI-powered summaries and contextual chat — built with clean architecture, Cubit state management, and Gemini AI.
 
 ## Features
 
-- Real-time chat with Gemini AI (`gemini-3.5-flash`)
-- Automatic retry on server errors (up to 3 attempts)
-- Human-readable error messages for all failure cases
+- **GitHub OAuth sign-in** via Firebase Auth
+- **Real repository list** fetched from the GitHub API with search, filter, and sort
+- **AI summaries** — one-tap Gemini-powered analysis of any repo (what it does, tech stack, strengths, weaknesses)
+- **Repo-aware AI chat** — ask anything about a specific repo; Gemini answers with full context
+- **Rate limit handling** — 429 responses trigger a 15-second countdown with auto-retry in both chat and summaries
+- **SQLite persistence** — summaries cached locally; cleared on sign-out
+- **Profile screen** — GitHub avatar, bio, stats, and owned repos
+- **Settings** — model selection (Gemini 2.0 Flash / 2.5 Pro), auto-summarize toggle, cache control
+- **Animated splash screen** and shimmer skeletons on all loading states
+- **Dark / light theme** toggle
 - Dev and Prod flavors with separate bundle IDs
-- Automated APK + IPA builds via GitHub Actions
-- Build notifications sent to email on every release
+
+## Screenshots
+
+| Sign In | Repo List | Repo Detail | Chat |
+|---|---|---|---|
+| GitHub OAuth | Search & filter | AI summary | Context-aware Q&A |
 
 ## Tech Stack
 
 | Package | Purpose |
 |---|---|
-| `flutter_bloc` | State management (Cubit) |
+| `flutter_bloc` | State management (Cubit/sealed states) |
 | `get_it` | Dependency injection |
+| `firebase_auth` | GitHub OAuth |
 | `http` | Network requests |
+| `sqflite` | Local summary cache |
+| `flutter_secure_storage` | GitHub access token storage |
+| `shared_preferences` | Settings persistence |
+| `url_launcher` | Open GitHub profile in browser |
+| `flutter_native_splash` | Animated splash screen |
 
 ## Architecture
 
@@ -26,41 +43,47 @@ Strict layered architecture: **presentation → domain → data**
 ```
 lib/
 ├── core/
-│   ├── config/         # AppConfig, Flavor enum
 │   ├── di/             # get_it dependency registration
-│   ├── error/          # Typed AppException sealed class
-│   └── result/         # ApiResult<T> (ApiSuccess / ApiFailure)
+│   ├── error/          # AppException sealed class (RateLimitException, ServerException, …)
+│   ├── result/         # ApiResult<T> — ApiSuccess / ApiFailure / ApiRateLimit
+│   ├── theme/          # AppColors, ThemeCubit
+│   └── widgets/        # TopBar, ShimmerBox, StatusPill
 │
 └── features/
-    └── chat/
-        ├── data/
-        │   ├── models/         # ChatMessageModel (Gemini JSON)
-        │   ├── repositories/   # GeminiChatRepositoryImpl
-        │   └── services/       # GeminiChatService (HTTP + retry)
-        ├── domain/
-        │   ├── entities/       # ChatMessage
-        │   ├── repositories/   # ChatRepository (abstract)
-        │   └── usecases/       # SendMessageUseCase
-        └── presentation/
-            ├── cubit/          # SendMessageCubit + States
-            ├── screens/        # ChatScreen
-            └── widgets/        # MessageBubble, MessageList, ChatInputBar
+    ├── chat/           # Gemini chat with repo context, cooldown, 429 countdown
+    ├── profile/        # GitHub user profile, avatar, stats, owned repos
+    ├── repo_detail/    # Repo header, AI summary, regenerate, rate-limit banner
+    ├── repo_list/      # GitHub repos, search/filter/sort, Gemini summary service
+    ├── settings/       # Model picker, auto-summarize, cache, persistence
+    ├── sign_in/        # Firebase GitHub OAuth, token storage
+    └── splash/         # Animated splash with logo
+```
+
+Each feature follows:
+```
+data/
+  datasources/    # API calls, SQLite, secure storage
+  models/         # JSON ↔ entity mapping
+  repositories/   # Impl — catches exceptions, returns ApiResult
+domain/
+  entities/       # Pure Dart — no Flutter imports
+  repositories/   # Abstract interface
+  usecases/       # Single-purpose use cases
+presentation/
+  cubit/          # State logic, Timer-based countdowns
+  screens/        # UI — observes state, zero business logic
+  widgets/        # Reusable screen-level widgets, skeletons
 ```
 
 ## Error Handling
 
-All errors are caught at the data boundary and surfaced as human-readable messages:
-
-| Error | User sees |
+| Scenario | Handling |
 |---|---|
-| No internet | "No internet connection. Please check your network and try again." |
-| Timeout | "The request took too long. Please try again." |
-| Rate limited (429) | "You're sending messages too fast. Please wait a moment and try again." |
-| Unauthorized (401/403) | "Authentication failed. Please check your API key." |
-| Server error (5xx) | "The AI service is having trouble right now. Please try again in a moment." |
-| Unknown | "Something went wrong. Please try again." |
-
-Server errors (5xx) are retried automatically up to **3 times** with progressive delay before failing.
+| 429 rate limit (chat) | Inline yellow card with 15s countdown + auto-retry |
+| 429 rate limit (summary) | Yellow banner with countdown + "Now" button |
+| Network / server error | Inline red error card with Retry button |
+| Sign-in failure | SnackBar with message |
+| Avatar load failure | Gradient initials fallback |
 
 ## Flavors
 
@@ -68,8 +91,7 @@ Server errors (5xx) are retried automatically up to **3 times** with progressive
 |---|---|---|
 | Bundle ID (Android) | `com.codemind.chatyaiagent.dev` | `com.codemind.chatyaiagent` |
 | Bundle ID (iOS) | `com.codemind.chatyaiagent.dev` | `com.codemind.chatyaiagent` |
-| App name | Chaty Agent Dev | Chaty Agent |
-| Debug banner | Shown | Hidden |
+| App name | GitMind Dev | GitMind |
 
 ## Getting Started
 
@@ -77,79 +99,33 @@ Server errors (5xx) are retried automatically up to **3 times** with progressive
 
 - Flutter SDK `^3.10.4`
 - A [Gemini API key](https://aistudio.google.com/app/apikey)
+- Firebase project with GitHub OAuth configured
 
 ### Setup
-
-1. Clone the repository
 
 ```bash
 git clone https://github.com/engmostafasoliman/Chaty_AI_-Agent.git
 cd Chaty_AI_-Agent
-```
-
-2. Install dependencies
-
-```bash
 flutter pub get
 ```
 
-3. Create your API key files
+### Run
 
 ```bash
-mkdir dart_defines
+# Dev — simulator / device
+flutter run \
+  --flavor dev \
+  --target lib/main_dev.dart \
+  --dart-define=GEMINI_API_KEY=your_key_here
 
-# dart_defines/dev.json
-echo '{ "GEMINI_API_KEY": "your_dev_api_key" }' > dart_defines/dev.json
-
-# dart_defines/prod.json
-echo '{ "GEMINI_API_KEY": "your_prod_api_key" }' > dart_defines/prod.json
+# Prod
+flutter run \
+  --flavor prod \
+  --target lib/main_prod.dart \
+  --dart-define=GEMINI_API_KEY=your_key_here
 ```
 
-> `dart_defines/` is gitignored — your keys are never committed.
-
-4. Run the app
-
-```bash
-# Dev debug
-flutter run --flavor dev --target lib/main_dev.dart --dart-define-from-file=dart_defines/dev.json
-
-# Dev release
-flutter run --flavor dev --target lib/main_dev.dart --dart-define-from-file=dart_defines/dev.json --release
-
-# Prod debug
-flutter run --flavor prod --target lib/main_prod.dart --dart-define-from-file=dart_defines/prod.json
-
-# Prod release
-flutter run --flavor prod --target lib/main_prod.dart --dart-define-from-file=dart_defines/prod.json --release
-```
-
-## CI/CD
-
-Builds are triggered automatically by pushing a version tag:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-GitHub Actions will:
-1. Build **dev + prod APK** (Android)
-2. Build **dev + prod IPA** (iOS)
-3. Create a **GitHub Release** with all 4 artifacts
-4. Send an **email notification** with the download link
-
-### Required GitHub Secrets
-
-| Secret | Description |
-|---|---|
-| `GEMINI_API_KEY_DEV` | Gemini API key for dev flavor |
-| `GEMINI_API_KEY_PROD` | Gemini API key for prod flavor |
-| `IOS_CERTIFICATE_BASE64` | Apple distribution certificate (base64) |
-| `IOS_CERTIFICATE_PASSWORD` | Certificate password |
-| `IOS_PROFILE_DEV_BASE64` | Dev provisioning profile (base64) |
-| `IOS_PROFILE_PROD_BASE64` | Prod provisioning profile (base64) |
-| `GMAIL_USERNAME` | Gmail address to send from |
-| `GMAIL_APP_PASSWORD` | Gmail app password |
+> Never commit your API key. Pass it via `--dart-define` at runtime only.
 
 ## Testing
 
@@ -157,17 +133,18 @@ GitHub Actions will:
 flutter test
 ```
 
-**20 tests** covering:
-- `ChatMessageModel` — fromJson, toJson, text getter, roundtrip
-- `GeminiChatRepositoryImpl` — success, all error types with humanized messages
-- `SendMessageUseCase` — success, failure, delegation
-- `SendMessageCubit` — all 4 states, message content verification
+Covers domain entities, use cases, repository implementations, and cubits across:
+- `SendMessageCubit` — all states, cooldown, rate-limit countdown
+- `RepoDetailCubit` — summary flow, 429 handling
+- `SettingsCubit` — persistence, defaults
+- `SettingsEntity` — copyWith, defaults
+- `ClearSummariesUseCase`
 
-## Cubit States
+## AI Models
 
-```
-sendMessage() called
-  → SendMessageLoading
-  → SendMessageSuccess(ChatMessage)   — on success
-  → SendMessageFailure(String)        — on error (humanized)
-```
+Selectable in Settings:
+
+| Model | Use case |
+|---|---|
+| `gemini-2.0-flash` | Default — fast, cost-efficient |
+| `gemini-2.5-pro` | Deeper analysis, slower |
