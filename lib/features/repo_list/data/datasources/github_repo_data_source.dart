@@ -5,14 +5,19 @@ import 'package:http/http.dart' as http;
 
 import '../../domain/entities/repo_summary_entity.dart';
 import '../models/repo_model.dart';
+import '../services/gemini_repo_summary_service.dart';
 import 'repo_data_source.dart';
 
 class GitHubRepoDataSource implements RepoDataSource {
   final FlutterSecureStorage _storage;
+  final GeminiRepoSummaryService _gemini;
   List<RepoModel>? _cache;
 
-  GitHubRepoDataSource({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+  GitHubRepoDataSource({
+    FlutterSecureStorage? storage,
+    required GeminiRepoSummaryService gemini,
+  })  : _storage = storage ?? const FlutterSecureStorage(),
+        _gemini = gemini;
 
   Future<String> get _token async {
     final token = await _storage.read(key: 'github_access_token');
@@ -69,8 +74,46 @@ class GitHubRepoDataSource implements RepoDataSource {
   }
 
   @override
-  Future<RepoSummaryEntity> generateSummary(String repoId) {
-    // Gemini integration — Phase 3
-    throw UnimplementedError('AI summary coming in Phase 3');
+  Future<RepoSummaryEntity> generateSummary(String repoId) async {
+    final repo = await getRepoById(repoId);
+    final token = await _token;
+
+    // Fetch languages and README in parallel
+    final results = await Future.wait([
+      http.get(
+        Uri.parse('https://api.github.com/repos/${repo.owner}/${repo.name}/languages'),
+        headers: _headers(token),
+      ),
+      http.get(
+        Uri.parse('https://api.github.com/repos/${repo.owner}/${repo.name}/readme'),
+        headers: _headers(token),
+      ),
+    ]);
+
+    final langResponse = results[0];
+    final readmeResponse = results[1];
+
+    final languages = langResponse.statusCode == 200
+        ? (jsonDecode(langResponse.body) as Map<String, dynamic>)
+            .cast<String, int>()
+        : <String, int>{};
+
+    String readme = '';
+    if (readmeResponse.statusCode == 200) {
+      final readmeJson =
+          jsonDecode(readmeResponse.body) as Map<String, dynamic>;
+      final encoded = readmeJson['content'] as String? ?? '';
+      readme = utf8.decode(base64.decode(encoded.replaceAll('\n', '')));
+    }
+
+    return _gemini.summarize(
+      name: repo.name,
+      owner: repo.owner,
+      description: repo.description,
+      language: repo.language,
+      languages: languages,
+      stars: repo.stars,
+      readme: readme,
+    );
   }
 }

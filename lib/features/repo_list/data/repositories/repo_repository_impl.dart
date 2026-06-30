@@ -31,7 +31,7 @@ class RepoRepositoryImpl implements RepoRepository {
     try {
       return ApiSuccess(await _dataSource.generateSummary(repoId));
     } catch (e) {
-      return const ApiFailure('Failed to generate summary. Please try again.');
+      return ApiFailure('Summary failed: $e');
     }
   }
 }
