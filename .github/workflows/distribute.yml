@@ -1,19 +1,16 @@
 name: Distribute
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       release_notes:
         description: 'Release notes shown to testers'
         required: false
-        default: 'New build from main branch'
+        default: 'New build available'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLUTTER_VERSION: '3.44.1'
-  RELEASE_NOTES: ${{ github.event.inputs.release_notes || 'New build from main branch' }}
 
 jobs:
   # ─────────────────────────────────────────────
@@ -22,6 +19,7 @@ jobs:
   android:
     name: Build & Distribute Android
     runs-on: ubuntu-latest
+    if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
 
     steps:
       - uses: actions/checkout@v4.2.2
@@ -57,14 +55,14 @@ jobs:
             --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
             --release
 
-      - name: Upload to Firebase App Distribution
+      - name: Distribute to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           groups: ${{ secrets.FIREBASE_TESTER_GROUPS }}
           file: build/app/outputs/flutter-apk/app-prod-release.apk
-          releaseNotes: ${{ env.RELEASE_NOTES }}
+          releaseNotes: ${{ github.event.inputs.release_notes || 'New build available' }}
 
   # ─────────────────────────────────────────────
   # iOS
@@ -72,6 +70,7 @@ jobs:
   ios:
     name: Build & Distribute iOS
     runs-on: macos-latest
+    if: ${{ secrets.IOS_CERTIFICATE_BASE64 != '' }}
 
     steps:
       - uses: actions/checkout@v4.2.2
@@ -85,7 +84,8 @@ jobs:
         run: flutter pub get
 
       - name: Install CocoaPods dependencies
-        run: cd ios && pod install --repo-update
+        working-directory: ios
+        run: pod install --repo-update
 
       - name: Import distribution certificate
         uses: apple-actions/import-codesign-certs@v3
@@ -102,17 +102,17 @@ jobs:
       - name: Build iOS IPA
         run: |
           flutter build ipa \
-            --flavor dev \
-            --target lib/main_dev.dart \
+            --flavor prod \
+            --target lib/main_prod.dart \
             --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
             --release \
             --export-options-plist=ios/ExportOptions.plist
 
-      - name: Upload to Firebase App Distribution
+      - name: Distribute to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_IOS_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           groups: ${{ secrets.FIREBASE_TESTER_GROUPS }}
           file: build/ios/ipa/GitMind.ipa
-          releaseNotes: ${{ env.RELEASE_NOTES }}
+          releaseNotes: ${{ github.event.inputs.release_notes || 'New build available' }}
