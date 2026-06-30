@@ -39,7 +39,7 @@ class GeminiChatRepositoryImpl implements ChatRepository {
       TimeoutException() =>
         'The request took too long. Please try again.',
       RateLimitException() =>
-        'You\'re sending messages too fast. Please wait a moment and try again.',
+        'Gemini API quota reached. Wait a few seconds and try again.',
       UnauthorizedException() =>
         'Authentication failed. Please check your API key.',
       ServerException() =>

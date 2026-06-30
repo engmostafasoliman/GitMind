@@ -219,7 +219,7 @@ class _SignInCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _Logo(isDark: isDark),
+          const _Logo(),
           const SizedBox(height: 32),
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 160),
@@ -229,7 +229,7 @@ class _SignInCard extends StatelessWidget {
               color: AppColors.text(isDark),
               height: 1.3,
             ),
-            child: const Text('Repo Insights'),
+            child: const Text('GitMind'),
           ),
           const SizedBox(height: 8),
           AnimatedDefaultTextStyle(
@@ -268,56 +268,25 @@ class _SignInCard extends StatelessWidget {
 }
 
 class _Logo extends StatelessWidget {
-  final bool isDark;
-  const _Logo({required this.isDark});
+  const _Logo();
 
   @override
   Widget build(BuildContext context) {
-    final accent = AppColors.accent(isDark);
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: accent.withValues(alpha: 0.30)),
-          ),
-          child: Center(
-            child: Text(
-              '</>',
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 12,
-                color: accent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset('assets/appicon.png', width: 36, height: 36, fit: BoxFit.cover),
         ),
         const SizedBox(width: 10),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: 'repo',
-                style: TextStyle(color: AppColors.text(isDark)),
-              ),
-              TextSpan(
-                text: '·',
-                style: TextStyle(color: accent),
-              ),
-              TextSpan(
-                text: 'insights',
-                style: TextStyle(color: AppColors.text(isDark)),
-              ),
-            ],
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
+        const Text(
+          'GitMind',
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
           ),
         ),
       ],

@@ -322,7 +322,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           _SettingsRow(
             label: 'Disconnect GitHub',
-            description: 'Revoke access and sign out of Repo Insights',
+            description: 'Revoke access and sign out of GitMind',
             isDark: isDark,
             control: _DangerButton(label: 'Disconnect', isDark: isDark, onTap: onSignOut ?? () {}),
             isLast: true,

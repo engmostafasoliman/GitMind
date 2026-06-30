@@ -75,22 +75,10 @@ class _ChatViewState extends State<_ChatView> {
         return BlocConsumer<SendMessageCubit, SendMessageState>(
           listener: (context, state) {
             _scrollToBottom();
-            if (state is ChatError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.error),
-                  backgroundColor: Colors.red.shade700,
-                  action: SnackBarAction(
-                    label: 'Dismiss',
-                    textColor: Colors.white,
-                    onPressed: () => context.read<SendMessageCubit>().dismissError(),
-                  ),
-                ),
-              );
-            }
           },
           builder: (context, state) {
             final isLoading = state is ChatLoading;
+            final errorMsg = state is ChatError ? state.error : null;
             final title = widget.repo != null
                 ? 'Ask about ${widget.repo!.name}'
                 : 'Chaty Agent';
@@ -154,10 +142,18 @@ class _ChatViewState extends State<_ChatView> {
                       emptyLabel: emptyLabel,
                     ),
                   ),
+                  if (errorMsg != null)
+                    _ErrorCard(
+                      message: errorMsg,
+                      isDark: isDark,
+                      onRetry: () => context.read<SendMessageCubit>().retry(),
+                      onDismiss: () => context.read<SendMessageCubit>().dismissError(),
+                    ),
                   _ChatInputBar(
                     controller: _controller,
                     focusNode: _focusNode,
                     isLoading: isLoading,
+                    isCoolingDown: state.isCoolingDown,
                     isDark: isDark,
                     onSend: _send,
                   ),
@@ -171,10 +167,67 @@ class _ChatViewState extends State<_ChatView> {
   }
 }
 
+class _ErrorCard extends StatelessWidget {
+  final String message;
+  final bool isDark;
+  final VoidCallback onRetry;
+  final VoidCallback onDismiss;
+
+  const _ErrorCard({
+    required this.message,
+    required this.isDark,
+    required this.onRetry,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.danger(isDark).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.danger(isDark).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, size: 18, color: AppColors.danger(isDark)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(fontSize: 13, color: AppColors.danger(isDark)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onRetry,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.danger(isDark),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text('Retry', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onDismiss,
+            child: Icon(Icons.close_rounded, size: 18, color: AppColors.secondary(isDark)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ChatInputBar extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool isLoading;
+  final bool isCoolingDown;
   final bool isDark;
   final VoidCallback onSend;
 
@@ -182,6 +235,7 @@ class _ChatInputBar extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.isLoading,
+    required this.isCoolingDown,
     required this.isDark,
     required this.onSend,
   });
@@ -189,6 +243,7 @@ class _ChatInputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = AppColors.accent(isDark);
+    final blocked = isLoading || isCoolingDown;
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -202,13 +257,13 @@ class _ChatInputBar extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 focusNode: focusNode,
-                enabled: !isLoading,
+                enabled: !blocked,
                 minLines: 1,
                 maxLines: 4,
                 textInputAction: TextInputAction.newline,
                 style: TextStyle(color: AppColors.text(isDark), fontSize: 15),
                 decoration: InputDecoration(
-                  hintText: 'Message...',
+                  hintText: isCoolingDown ? 'Wait a moment...' : 'Message...',
                   hintStyle: TextStyle(color: AppColors.secondary(isDark)),
                   filled: true,
                   fillColor: AppColors.surface(isDark),
@@ -223,8 +278,10 @@ class _ChatInputBar extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             IconButton.filled(
-              onPressed: isLoading ? null : onSend,
-              icon: const Icon(Icons.send_rounded),
+              onPressed: blocked ? null : onSend,
+              icon: Icon(
+                isCoolingDown ? Icons.hourglass_top_rounded : Icons.send_rounded,
+              ),
               style: IconButton.styleFrom(
                 backgroundColor: accent,
                 foregroundColor: Colors.white,

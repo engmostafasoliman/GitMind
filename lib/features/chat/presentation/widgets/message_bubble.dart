@@ -17,56 +17,80 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = AppColors.accent(isDark);
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+    final maxWidth = MediaQuery.sizeOf(context).width * 0.72;
+
+    if (isUser) {
+      return Padding(
+        padding: const EdgeInsets.only(left: 48, bottom: 4),
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(4),
+                ),
+              ),
+              child: Text(
+                text,
+                style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.45),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 48, bottom: 4),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isUser) ...[
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Icon(Icons.auto_awesome_rounded, size: 14, color: accent),
-              ),
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 8),
-          ],
+            child: Center(child: Icon(Icons.auto_awesome_rounded, size: 14, color: accent)),
+          ),
+          const SizedBox(width: 8),
           Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.75,
-              ),
-              margin: const EdgeInsets.symmetric(vertical: 4),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-              decoration: BoxDecoration(
-                color: isUser ? accent : AppColors.surface(isDark),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isUser ? 16 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 2),
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface(isDark),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(4),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  border: Border.all(color: AppColors.border(isDark)),
                 ),
-                border: isUser
-                    ? null
-                    : Border.all(color: AppColors.border(isDark)),
-              ),
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: isUser ? Colors.white : AppColors.text(isDark),
-                  fontSize: 15,
-                  height: 1.45,
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    color: AppColors.text(isDark),
+                    fontSize: 15,
+                    height: 1.45,
+                  ),
                 ),
               ),
             ),
           ),
-          if (isUser) const SizedBox(width: 36),
         ],
       ),
     );

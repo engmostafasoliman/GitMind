@@ -72,39 +72,21 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = AppColors.accent(isDark);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: accent.withValues(alpha: 0.30)),
-          ),
-          child: Center(
-            child: Text(
-              '</>',
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: accent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: Image.asset('assets/appicon.png', width: 28, height: 28, fit: BoxFit.cover),
         ),
         const SizedBox(width: 8),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: 'repo', style: TextStyle(color: AppColors.text(isDark))),
-              TextSpan(text: '·', style: TextStyle(color: accent)),
-              TextSpan(text: 'insights', style: TextStyle(color: AppColors.text(isDark))),
-            ],
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: FontWeight.w500),
+        Text(
+          'GitMind',
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.text(isDark),
           ),
         ),
       ],

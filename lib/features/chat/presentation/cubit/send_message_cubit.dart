@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/result/api_result.dart';
@@ -8,6 +10,9 @@ import 'send_message_state.dart';
 
 class SendMessageCubit extends Cubit<SendMessageState> {
   final SendMessageUseCase _useCase;
+  Timer? _cooldownTimer;
+
+  static const _cooldownDuration = Duration(seconds: 5);
 
   SendMessageCubit(this._useCase) : super(const ChatIdle());
 
@@ -38,7 +43,7 @@ class SendMessageCubit extends Cubit<SendMessageState> {
   }
 
   Future<void> send(String text) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty || state.isCoolingDown) return;
     final current = state;
     final userMsg = ChatMessage(role: 'user', text: text.trim());
     final history = [...current.messages, userMsg];
@@ -47,7 +52,34 @@ class SendMessageCubit extends Cubit<SendMessageState> {
     final result = await _useCase(history);
     switch (result) {
       case ApiSuccess(:final data):
-        emit(ChatIdle([...history, data]));
+        final messages = [...history, data];
+        emit(ChatIdle(messages, true));
+        _startCooldown(messages);
+      case ApiFailure(:final message):
+        emit(ChatError(history, message));
+    }
+  }
+
+  void _startCooldown(List<ChatMessage> messages) {
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer(_cooldownDuration, () {
+      if (!isClosed) emit(ChatIdle(messages));
+    });
+  }
+
+  Future<void> retry() async {
+    final current = state;
+    if (current is! ChatError) return;
+    // Last message in history is the user message that failed — resend it
+    final history = current.messages;
+    if (history.isEmpty) return;
+    emit(ChatLoading(history));
+    final result = await _useCase(history);
+    switch (result) {
+      case ApiSuccess(:final data):
+        final messages = [...history, data];
+        emit(ChatIdle(messages, true));
+        _startCooldown(messages);
       case ApiFailure(:final message):
         emit(ChatError(history, message));
     }
@@ -57,5 +89,11 @@ class SendMessageCubit extends Cubit<SendMessageState> {
     final current = state;
     if (current is! ChatError) return;
     emit(ChatIdle(current.messages));
+  }
+
+  @override
+  Future<void> close() {
+    _cooldownTimer?.cancel();
+    return super.close();
   }
 }
