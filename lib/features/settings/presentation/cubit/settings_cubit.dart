@@ -1,5 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/analytics/analytics_service.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../repo_list/domain/usecases/clear_summaries_usecase.dart';
@@ -30,7 +32,10 @@ class SettingsCubit extends Cubit<SettingsState> {
     emit(SettingsLoaded(updated));
   }
 
-  Future<void> setGeminiModel(String model) => _update(_current.copyWith(geminiModel: model));
+  Future<void> setGeminiModel(String model) async {
+    getIt<AnalyticsService>().logModelChanged(model);
+    return _update(_current.copyWith(geminiModel: model));
+  }
 
   Future<void> setAutoSummarize(bool v) => _update(_current.copyWith(autoSummarize: v));
 

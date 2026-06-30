@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 
+import '../analytics/analytics_service.dart';
 import '../config/app_config.dart';
 import '../theme/theme_cubit.dart';
 import '../../features/chat/data/repositories/gemini_chat_repository_impl.dart';
@@ -33,6 +34,7 @@ import '../../features/sign_in/presentation/cubit/sign_in_cubit.dart';
 final getIt = GetIt.instance;
 
 void setupDependencies(AppConfig config) {
+  getIt.registerLazySingleton<AnalyticsService>(() => AnalyticsService());
   getIt.registerLazySingleton<ThemeCubit>(() => ThemeCubit());
 
   // Auth

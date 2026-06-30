@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/analytics/analytics_service.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../core/result/api_result.dart';
 import '../../../repo_list/domain/entities/repo_entity.dart';
 import '../../domain/entities/chat_message.dart';
@@ -10,15 +12,21 @@ import 'send_message_state.dart';
 
 class SendMessageCubit extends Cubit<SendMessageState> {
   final SendMessageUseCase _useCase;
+  final AnalyticsService _analytics;
   Timer? _cooldownTimer;
   Timer? _rateLimitTimer;
+  String _repoId = '';
 
   static const _cooldownDuration = Duration(seconds: 5);
   static const _rateLimitRetrySeconds = 15;
 
-  SendMessageCubit(this._useCase) : super(const ChatIdle());
+  SendMessageCubit(this._useCase, {AnalyticsService? analytics})
+      : _analytics = analytics ?? getIt<AnalyticsService>(),
+        super(const ChatIdle());
 
   void initWithRepo(RepoEntity repo) {
+    _repoId = repo.id;
+    _analytics.logChatOpened(repo.id);
     final s = repo.summary;
     if (s == null) return;
 
@@ -79,10 +87,12 @@ class SendMessageCubit extends Cubit<SendMessageState> {
     final result = await _useCase(history);
     switch (result) {
       case ApiSuccess(:final data):
+        _analytics.logMessageSent(_repoId);
         final messages = [...history, data];
         emit(ChatIdle(messages, true));
         _startCooldown(messages);
       case ApiRateLimit():
+        _analytics.logChatRateLimit(_repoId);
         _startRateLimitCountdown(history);
       case ApiFailure(:final message):
         emit(ChatError(history, message));

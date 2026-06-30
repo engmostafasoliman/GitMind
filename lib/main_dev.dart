@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
+import 'core/analytics/analytics_service.dart';
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
 import 'core/theme/theme_cubit.dart';
@@ -53,6 +54,7 @@ void _onSignIn(UserEntity user) {
 }
 
 void _signOut() async {
+  await getIt<AnalyticsService>().logSignOut();
   await getIt<AuthRepository>().signOut();
   await getIt<RepoDataSource>().clearSummaries();
   _navigatorKey.currentState?.pushAndRemoveUntil(

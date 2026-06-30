@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/analytics/analytics_service.dart';
+
 import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
@@ -241,10 +243,13 @@ class _ProfileHeader extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => launchUrl(
-                        Uri.parse('https://github.com/${user.handle}'),
-                        mode: LaunchMode.externalApplication,
-                      ),
+                      onTap: () {
+                        getIt<AnalyticsService>().logViewOnGitHub();
+                        launchUrl(
+                          Uri.parse('https://github.com/${user.handle}'),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
