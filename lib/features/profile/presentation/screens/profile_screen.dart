@@ -49,9 +49,9 @@ class _ProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeMode>(
-      builder: (context, themeMode) {
-        final isDark = themeMode == ThemeMode.dark;
+    return BlocBuilder<ThemeCubit, AppThemeData>(
+      builder: (context, theme) {
+        final isDark = theme.isDark;
         return Scaffold(
           backgroundColor: AppColors.bg(isDark),
           body: Column(

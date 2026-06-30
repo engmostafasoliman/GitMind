@@ -8,7 +8,6 @@ class AppColors {
   static const Color _lightText = Color(0xFF1F2328);
   static const Color _lightSecondary = Color(0xFF59636E);
   static const Color _lightMuted = Color(0xFF818B98);
-  static const Color _lightAccent = Color(0xFF0969DA);
   static const Color _lightBtn = Color(0xFF1F883D);
   static const Color _lightSuccess = Color(0xFF1A7F37);
   static const Color _lightWarning = Color(0xFF9A6700);
@@ -23,12 +22,15 @@ class AppColors {
   static const Color _darkText = Color(0xFFE6EDF3);
   static const Color _darkSecondary = Color(0xFF7D8590);
   static const Color _darkMuted = Color(0xFF6E7681);
-  static const Color _darkAccent = Color(0xFF2F81F7);
   static const Color _darkBtn = Color(0xFF238636);
   static const Color _darkSuccess = Color(0xFF3FB950);
   static const Color _darkWarning = Color(0xFFD29922);
   static const Color _darkDanger = Color(0xFFF85149);
   static const Color _darkDot = Color(0x1F2F81F7);
+
+  // Dynamic accent — updated via setAccentId()
+  static String _accentId = 'indigo';
+  static void setAccentId(String id) { _accentId = id; }
 
   static Color bg(bool isDark) => isDark ? _darkBg : _lightBg;
   static Color surface(bool isDark) => isDark ? _darkSurface : _lightSurface;
@@ -37,10 +39,20 @@ class AppColors {
   static Color text(bool isDark) => isDark ? _darkText : _lightText;
   static Color secondary(bool isDark) => isDark ? _darkSecondary : _lightSecondary;
   static Color muted(bool isDark) => isDark ? _darkMuted : _lightMuted;
-  static Color accent(bool isDark) => isDark ? _darkAccent : _lightAccent;
+  static Color accent(bool isDark) => _accentFromId(_accentId, isDark);
   static Color btn(bool isDark) => isDark ? _darkBtn : _lightBtn;
   static Color success(bool isDark) => isDark ? _darkSuccess : _lightSuccess;
   static Color warning(bool isDark) => isDark ? _darkWarning : _lightWarning;
   static Color danger(bool isDark) => isDark ? _darkDanger : _lightDanger;
   static Color dot(bool isDark) => isDark ? _darkDot : _lightDot;
+
+  static Color accentForId(String id, bool isDark) => _accentFromId(id, isDark);
+
+  static Color _accentFromId(String id, bool isDark) => switch (id) {
+        'indigo' => isDark ? const Color(0xFF6D8BFF) : const Color(0xFF4F46E5),
+        'violet' => isDark ? const Color(0xFF9b6dff) : const Color(0xFF7C3AED),
+        'teal'   => isDark ? const Color(0xFF00B4AB) : const Color(0xFF0D9488),
+        'green'  => isDark ? const Color(0xFF3FB950) : const Color(0xFF16A34A),
+        _        => isDark ? const Color(0xFF2F81F7) : const Color(0xFF0969DA),
+      };
 }

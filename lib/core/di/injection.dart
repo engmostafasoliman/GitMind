@@ -16,10 +16,14 @@ import '../../features/repo_list/domain/repositories/repo_repository.dart';
 import '../../features/repo_list/domain/usecases/get_repos_usecase.dart';
 import '../../features/repo_list/domain/usecases/get_repo_detail_usecase.dart';
 import '../../features/repo_list/domain/usecases/generate_summary_usecase.dart';
+import '../../features/repo_list/domain/usecases/clear_summaries_usecase.dart';
 import '../../features/repo_list/presentation/cubit/repo_list_cubit.dart';
 import '../../features/repo_detail/presentation/cubit/repo_detail_cubit.dart';
 import '../../features/profile/domain/entities/user_entity.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../features/settings/data/repositories/settings_repository_impl.dart';
+import '../../features/settings/domain/repositories/settings_repository.dart';
+import '../../features/settings/presentation/cubit/settings_cubit.dart';
 import '../../features/sign_in/data/datasources/firebase_auth_data_source.dart';
 import '../../features/sign_in/data/repositories/auth_repository_impl.dart';
 import '../../features/sign_in/domain/repositories/auth_repository.dart';
@@ -45,13 +49,25 @@ void setupDependencies(AppConfig config) {
     () => SignInCubit(getIt()),
   );
 
+  // Settings
+  getIt.registerLazySingleton<SettingsRepository>(
+    () => SettingsRepositoryImpl(),
+  );
+  getIt.registerLazySingleton<SettingsCubit>(
+    () => SettingsCubit(getIt(), getIt(), getIt()),
+  );
+
   // Repos
   getIt.registerLazySingleton<GeminiRepoSummaryService>(
     () => GeminiRepoSummaryService(config.geminiApiKey),
   );
   getIt.registerLazySingleton<RepoSummaryDb>(() => RepoSummaryDb());
   getIt.registerLazySingleton<RepoDataSource>(
-    () => GitHubRepoDataSource(gemini: getIt(), db: getIt()),
+    () => GitHubRepoDataSource(
+      gemini: getIt(),
+      db: getIt(),
+      settingsRepo: getIt(),
+    ),
   );
   getIt.registerLazySingleton<RepoRepository>(
     () => RepoRepositoryImpl(getIt()),
@@ -65,11 +81,14 @@ void setupDependencies(AppConfig config) {
   getIt.registerLazySingleton<GenerateSummaryUseCase>(
     () => GenerateSummaryUseCase(getIt()),
   );
+  getIt.registerLazySingleton<ClearSummariesUseCase>(
+    () => ClearSummariesUseCase(getIt()),
+  );
   getIt.registerFactory<RepoListCubit>(
     () => RepoListCubit(getIt()),
   );
   getIt.registerFactory<RepoDetailCubit>(
-    () => RepoDetailCubit(getIt(), getIt()),
+    () => RepoDetailCubit(getIt(), getIt(), getIt()),
   );
   getIt.registerFactory<ProfileCubit>(
     () => ProfileCubit(getIt(), getIt<AuthRepository>().currentUser ?? kMockUser),

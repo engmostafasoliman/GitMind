@@ -76,6 +76,9 @@ class RepoMockDataSource implements RepoDataSource {
     );
   }
 
+  @override
+  Future<void> clearSummaries() async {}
+
   RepoModel _withSummary(RepoModel r) {
     final summary = _summaries[r.id];
     if (summary == null) return r;

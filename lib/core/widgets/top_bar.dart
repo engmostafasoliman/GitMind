@@ -23,9 +23,9 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeMode>(
-      builder: (context, themeMode) {
-        final isDark = themeMode == ThemeMode.dark;
+    return BlocBuilder<ThemeCubit, AppThemeData>(
+      builder: (context, theme) {
+        final isDark = theme.isDark;
         return Container(
           height: 64 + MediaQuery.of(context).padding.top,
           padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),

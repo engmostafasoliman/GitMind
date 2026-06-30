@@ -34,4 +34,7 @@ class RepoRepositoryImpl implements RepoRepository {
       return ApiFailure('Summary failed: $e');
     }
   }
+
+  @override
+  Future<void> clearSummaries() => _dataSource.clearSummaries();
 }

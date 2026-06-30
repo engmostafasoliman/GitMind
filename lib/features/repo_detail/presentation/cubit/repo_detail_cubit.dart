@@ -2,13 +2,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/result/api_result.dart';
 import '../../../repo_list/domain/usecases/generate_summary_usecase.dart';
 import '../../../repo_list/domain/usecases/get_repo_detail_usecase.dart';
+import '../../../settings/domain/repositories/settings_repository.dart';
 import 'repo_detail_state.dart';
 
 class RepoDetailCubit extends Cubit<RepoDetailState> {
   final GetRepoDetailUseCase _getDetail;
   final GenerateSummaryUseCase _generateSummary;
+  final SettingsRepository _settingsRepo;
 
-  RepoDetailCubit(this._getDetail, this._generateSummary)
+  RepoDetailCubit(this._getDetail, this._generateSummary, this._settingsRepo)
       : super(const RepoDetailInitial());
 
   Future<void> load(String repoId) async {
@@ -17,6 +19,10 @@ class RepoDetailCubit extends Cubit<RepoDetailState> {
     switch (result) {
       case ApiSuccess(:final data):
         emit(RepoDetailLoaded(data));
+        if (!data.summarized) {
+          final settings = await _settingsRepo.load();
+          if (settings.autoSummarize) await generateSummary();
+        }
       case ApiFailure(:final message):
         emit(RepoDetailError(message));
     }

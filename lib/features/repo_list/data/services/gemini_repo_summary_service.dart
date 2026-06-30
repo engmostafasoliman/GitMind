@@ -7,7 +7,6 @@ import '../models/repo_summary_model.dart';
 class GeminiRepoSummaryService {
   final String _apiKey;
 
-  static const _model = 'gemini-flash-latest';
   static const _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -21,9 +20,10 @@ class GeminiRepoSummaryService {
     required Map<String, int> languages,
     required int stars,
     required String readme,
+    String model = 'gemini-flash-latest',
   }) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl/$_model:generateContent'),
+      Uri.parse('$_baseUrl/$model:generateContent'),
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': _apiKey,

@@ -8,6 +8,7 @@ import 'core/theme/theme_cubit.dart';
 import 'firebase_options.dart';
 import 'features/profile/domain/entities/user_entity.dart';
 import 'features/repo_list/presentation/cubit/repo_list_cubit.dart';
+import 'features/settings/presentation/cubit/settings_cubit.dart';
 import 'features/sign_in/presentation/screens/sign_in_screen.dart';
 import 'features/repo_list/presentation/screens/repo_list_screen.dart';
 import 'features/repo_detail/presentation/screens/repo_detail_screen.dart';
@@ -69,14 +70,15 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider<ThemeCubit>(create: (_) => getIt<ThemeCubit>()),
         BlocProvider<RepoListCubit>(create: (_) => getIt<RepoListCubit>()),
+        BlocProvider<SettingsCubit>(create: (_) => getIt<SettingsCubit>()..load()),
       ],
-      child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, themeMode) {
+      child: BlocBuilder<ThemeCubit, AppThemeData>(
+        builder: (context, theme) {
           return MaterialApp(
             title: appName,
             debugShowCheckedModeBanner: isDev,
             navigatorKey: _navigatorKey,
-            themeMode: themeMode,
+            themeMode: theme.mode,
             theme: ThemeData.light(useMaterial3: true),
             darkTheme: ThemeData.dark(useMaterial3: true),
             home: SignInScreen(

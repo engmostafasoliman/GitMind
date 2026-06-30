@@ -63,6 +63,26 @@ class RepoListCubit extends Cubit<RepoListState> {
     emit(_applyFilters(current.copyWith(allRepos: updated)));
   }
 
+  void clearAllSummarized() {
+    final current = state;
+    if (current is! RepoListLoaded) return;
+    final updated = current.allRepos
+        .map((r) => RepoEntity(
+              id: r.id,
+              name: r.name,
+              owner: r.owner,
+              description: r.description,
+              language: r.language,
+              stars: r.stars,
+              updatedAgo: r.updatedAgo,
+              license: r.license,
+              lastCommit: r.lastCommit,
+              summarized: false,
+            ))
+        .toList();
+    emit(_applyFilters(current.copyWith(allRepos: updated)));
+  }
+
   RepoListLoaded _applyFilters(RepoListLoaded state) {
     final q = state.searchQuery.toLowerCase();
     var filtered = state.allRepos.where((r) {

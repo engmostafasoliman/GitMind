@@ -10,6 +10,8 @@ import '../../../../core/widgets/top_bar.dart';
 import '../../../repo_list/domain/entities/repo_entity.dart';
 import '../../../repo_list/domain/entities/repo_summary_entity.dart';
 import '../../../repo_list/presentation/cubit/repo_list_cubit.dart';
+import '../../../settings/presentation/cubit/settings_cubit.dart';
+import '../../../settings/presentation/cubit/settings_state.dart';
 import '../cubit/repo_detail_cubit.dart';
 import '../cubit/repo_detail_state.dart';
 import '../widgets/confidence_badge.dart';
@@ -63,11 +65,22 @@ class _RepoDetailView extends StatelessWidget {
       listener: (context, state) {
         if (state is RepoDetailLoaded && state.repo.summary != null) {
           context.read<RepoListCubit>().markSummarized(repoId, state.repo.summary!);
+          final settingsState = context.read<SettingsCubit>().state;
+          if (settingsState is SettingsLoaded && settingsState.settings.notifyOnDone) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Summary ready for ${state.repo.name}'),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         }
       },
-      child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, themeMode) {
-          final isDark = themeMode == ThemeMode.dark;
+      child: BlocBuilder<ThemeCubit, AppThemeData>(
+        builder: (context, theme) {
+          final isDark = theme.isDark;
           return Scaffold(
             backgroundColor: AppColors.bg(isDark),
             body: Column(
