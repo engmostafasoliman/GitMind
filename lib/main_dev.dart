@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
@@ -18,16 +19,19 @@ import 'features/profile/presentation/screens/profile_screen.dart';
 import 'features/settings/presentation/screens/settings_screen.dart';
 import 'features/chat/presentation/screens/chat_screen.dart';
 import 'features/repo_list/domain/entities/repo_entity.dart';
+import 'features/splash/presentation/screens/splash_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: binding);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   const config = AppConfig(
     flavor: Flavor.dev,
-    appName: 'Chaty Agent Dev',
+    appName: 'GitMind Dev',
     geminiApiKey: String.fromEnvironment('GEMINI_API_KEY'),
   );
   setupDependencies(config);
+  FlutterNativeSplash.remove();
   runApp(MyApp(appName: config.appName, isDev: true));
 }
 
@@ -111,7 +115,13 @@ class MyApp extends StatelessWidget {
             themeMode: theme.mode,
             theme: ThemeData.light(useMaterial3: true),
             darkTheme: ThemeData.dark(useMaterial3: true),
-            home: SignInScreen(onSignIn: _onSignIn),
+            home: SplashScreen(
+              onDone: () => _navigatorKey.currentState?.pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => SignInScreen(onSignIn: _onSignIn),
+                ),
+              ),
+            ),
           );
         },
       ),
