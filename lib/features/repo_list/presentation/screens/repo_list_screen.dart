@@ -13,8 +13,15 @@ class RepoListScreen extends StatefulWidget {
   final ValueChanged<String>? onRepoTap;
   final VoidCallback? onProfile;
   final VoidCallback? onSettings;
+  final VoidCallback? onSignOut;
 
-  const RepoListScreen({super.key, this.onRepoTap, this.onProfile, this.onSettings});
+  const RepoListScreen({
+    super.key,
+    this.onRepoTap,
+    this.onProfile,
+    this.onSettings,
+    this.onSignOut,
+  });
 
   @override
   State<RepoListScreen> createState() => _RepoListScreenState();
@@ -35,6 +42,7 @@ class _RepoListScreenState extends State<RepoListScreen> {
       onRepoTap: widget.onRepoTap,
       onProfile: widget.onProfile,
       onSettings: widget.onSettings,
+      onSignOut: widget.onSignOut,
     );
   }
 }
@@ -43,13 +51,14 @@ class _RepoListView extends StatelessWidget {
   final ValueChanged<String>? onRepoTap;
   final VoidCallback? onProfile;
   final VoidCallback? onSettings;
-  const _RepoListView({this.onRepoTap, this.onProfile, this.onSettings});
+  final VoidCallback? onSignOut;
+  const _RepoListView({this.onRepoTap, this.onProfile, this.onSettings, this.onSignOut});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeMode>(
-      builder: (context, themeMode) {
-        final isDark = themeMode == ThemeMode.dark;
+    return BlocBuilder<ThemeCubit, AppThemeData>(
+      builder: (context, theme) {
+        final isDark = theme.isDark;
         return Scaffold(
           backgroundColor: AppColors.bg(isDark),
           body: Column(
@@ -63,6 +72,7 @@ class _RepoListView extends StatelessWidget {
                     onSearch: (q) => context.read<RepoListCubit>().search(q),
                     onProfile: onProfile,
                     onSettings: onSettings,
+                    onSignOut: onSignOut,
                   );
                 },
               ),

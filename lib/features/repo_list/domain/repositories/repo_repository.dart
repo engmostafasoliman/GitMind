@@ -6,4 +6,5 @@ abstract class RepoRepository {
   Future<ApiResult<List<RepoEntity>>> getRepos();
   Future<ApiResult<RepoEntity>> getRepoById(String id);
   Future<ApiResult<RepoSummaryEntity>> generateSummary(String repoId, {bool force = false});
+  Future<void> clearSummaries();
 }

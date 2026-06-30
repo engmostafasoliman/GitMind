@@ -68,4 +68,9 @@ class RepoSummaryDb {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
+
+  Future<void> deleteAll() async {
+    final db = await _database;
+    await db.delete('repo_summaries');
+  }
 }

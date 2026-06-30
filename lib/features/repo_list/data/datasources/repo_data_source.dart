@@ -5,4 +5,5 @@ abstract class RepoDataSource {
   Future<List<RepoModel>> getRepos();
   Future<RepoModel> getRepoById(String id);
   Future<RepoSummaryEntity> generateSummary(String repoId, {bool force = false});
+  Future<void> clearSummaries();
 }

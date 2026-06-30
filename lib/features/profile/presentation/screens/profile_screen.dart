@@ -49,9 +49,9 @@ class _ProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeMode>(
-      builder: (context, themeMode) {
-        final isDark = themeMode == ThemeMode.dark;
+    return BlocBuilder<ThemeCubit, AppThemeData>(
+      builder: (context, theme) {
+        final isDark = theme.isDark;
         return Scaffold(
           backgroundColor: AppColors.bg(isDark),
           body: Column(
@@ -204,18 +204,18 @@ class _ProfileHeader extends StatelessWidget {
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF2F81F7), Color(0xFF9b6dff)],
-                    ),
                     border: Border.all(color: AppColors.surface(isDark), width: 4),
                   ),
-                  child: Center(
-                    child: Text(
-                      user.initials,
-                      style: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.w600),
-                    ),
+                  child: ClipOval(
+                    child: user.avatarUrl != null
+                        ? Image.network(
+                            user.avatarUrl!,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _AvatarFallback(initials: user.initials),
+                          )
+                        : _AvatarFallback(initials: user.initials),
                   ),
                 ),
               ),
@@ -233,9 +233,9 @@ class _ProfileHeader extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(user.name, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.text(isDark))),
+                          Text(user.name, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.text(isDark)), overflow: TextOverflow.ellipsis),
                           const SizedBox(height: 2),
-                          Text('@${user.handle}', style: TextStyle(fontFamily: 'monospace', fontSize: 13, color: AppColors.muted(isDark))),
+                          Text('@${user.handle}', style: TextStyle(fontFamily: 'monospace', fontSize: 13, color: AppColors.muted(isDark)), overflow: TextOverflow.ellipsis),
                         ],
                       ),
                     ),
@@ -283,7 +283,13 @@ class _MetaItem extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: AppColors.secondary(isDark)),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 13, color: AppColors.secondary(isDark))),
+        Flexible(
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 13, color: AppColors.secondary(isDark)),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }
@@ -303,50 +309,89 @@ class _StatsGrid extends StatelessWidget {
       (label: 'Following', value: _fmt(user.following), icon: Icons.person_add_alt_rounded),
     ];
 
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 2.2,
-      children: stats
-          .map((s) => Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface(isDark),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border(isDark)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - 12) / 2;
+        return GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: cardWidth / 88,
+          children: stats
+              .map((s) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface(isDark),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border(isDark)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(s.icon, size: 14, color: AppColors.muted(isDark)),
-                        const SizedBox(width: 6),
-                        Text(s.label, style: TextStyle(fontSize: 12, color: AppColors.muted(isDark))),
+                        Row(
+                          children: [
+                            Icon(s.icon, size: 13, color: AppColors.muted(isDark)),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                s.label,
+                                style: TextStyle(fontSize: 11, color: AppColors.muted(isDark)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            s.value,
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.text(isDark),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      s.value,
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.text(isDark),
-                      ),
-                    ),
-                  ],
-                ),
-              ))
-          .toList(),
+                  ))
+              .toList(),
+        );
+      },
     );
   }
 
   String _fmt(int n) => n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
+}
+
+class _AvatarFallback extends StatelessWidget {
+  final String initials;
+  const _AvatarFallback({required this.initials});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF2F81F7), Color(0xFF9b6dff)],
+          ),
+        ),
+        child: Center(
+          child: Text(initials, style: const TextStyle(fontSize: 22, color: Colors.white, fontWeight: FontWeight.w600)),
+        ),
+      ),
+    );
+  }
 }
 
 class _BannerPainter extends CustomPainter {
@@ -383,14 +428,20 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger(isDark)),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.secondary(isDark))),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 14, color: AppColors.secondary(isDark)),
+            ),
             const SizedBox(height: 20),
             GestureDetector(
               onTap: onRetry,

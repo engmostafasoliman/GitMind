@@ -2,12 +2,12 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../../../core/error/app_exception.dart';
 import '../models/repo_summary_model.dart';
 
 class GeminiRepoSummaryService {
   final String _apiKey;
 
-  static const _model = 'gemini-flash-latest';
   static const _baseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -21,9 +21,10 @@ class GeminiRepoSummaryService {
     required Map<String, int> languages,
     required int stars,
     required String readme,
+    String model = 'gemini-flash-latest',
   }) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl/$_model:generateContent'),
+      Uri.parse('$_baseUrl/$model:generateContent'),
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': _apiKey,
@@ -39,8 +40,11 @@ class GeminiRepoSummaryService {
       }),
     ).timeout(const Duration(seconds: 45));
 
+    if (response.statusCode == 429) {
+      throw const RateLimitException();
+    }
     if (response.statusCode != 200) {
-      throw Exception('Gemini API error ${response.statusCode}: ${response.body}');
+      throw ServerException(response.statusCode);
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;

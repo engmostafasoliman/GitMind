@@ -10,6 +10,8 @@ import '../../../../core/widgets/top_bar.dart';
 import '../../../repo_list/domain/entities/repo_entity.dart';
 import '../../../repo_list/domain/entities/repo_summary_entity.dart';
 import '../../../repo_list/presentation/cubit/repo_list_cubit.dart';
+import '../../../settings/presentation/cubit/settings_cubit.dart';
+import '../../../settings/presentation/cubit/settings_state.dart';
 import '../cubit/repo_detail_cubit.dart';
 import '../cubit/repo_detail_state.dart';
 import '../widgets/confidence_badge.dart';
@@ -20,6 +22,8 @@ class RepoDetailScreen extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onProfile;
   final VoidCallback? onSettings;
+  final VoidCallback? onSignOut;
+  final ValueChanged<RepoEntity>? onChat;
 
   const RepoDetailScreen({
     super.key,
@@ -27,6 +31,8 @@ class RepoDetailScreen extends StatelessWidget {
     this.onBack,
     this.onProfile,
     this.onSettings,
+    this.onSignOut,
+    this.onChat,
   });
 
   @override
@@ -38,6 +44,8 @@ class RepoDetailScreen extends StatelessWidget {
         onBack: onBack,
         onProfile: onProfile,
         onSettings: onSettings,
+        onSignOut: onSignOut,
+        onChat: onChat,
       ),
     );
   }
@@ -48,11 +56,15 @@ class _RepoDetailView extends StatelessWidget {
   final VoidCallback? onBack;
   final VoidCallback? onProfile;
   final VoidCallback? onSettings;
+  final VoidCallback? onSignOut;
+  final ValueChanged<RepoEntity>? onChat;
   const _RepoDetailView({
     required this.repoId,
     this.onBack,
     this.onProfile,
     this.onSettings,
+    this.onSignOut,
+    this.onChat,
   });
 
   @override
@@ -63,19 +75,51 @@ class _RepoDetailView extends StatelessWidget {
       listener: (context, state) {
         if (state is RepoDetailLoaded && state.repo.summary != null) {
           context.read<RepoListCubit>().markSummarized(repoId, state.repo.summary!);
+          final settingsState = context.read<SettingsCubit>().state;
+          if (settingsState is SettingsLoaded && settingsState.settings.notifyOnDone) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Summary ready for ${state.repo.name}'),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         }
       },
-      child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, themeMode) {
-          final isDark = themeMode == ThemeMode.dark;
+      child: BlocBuilder<ThemeCubit, AppThemeData>(
+        builder: (context, theme) {
+          final isDark = theme.isDark;
           return Scaffold(
             backgroundColor: AppColors.bg(isDark),
+            floatingActionButton: onChat == null
+                ? null
+                : BlocBuilder<RepoDetailCubit, RepoDetailState>(
+                    builder: (context, state) {
+                      if (state is! RepoDetailLoaded || !state.repo.summarized) {
+                        return const SizedBox.shrink();
+                      }
+                      final repo = state.repo;
+                      return FloatingActionButton.extended(
+                        onPressed: () => onChat!(repo),
+                        backgroundColor: AppColors.accent(isDark),
+                        foregroundColor: Colors.white,
+                        icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                        label: const Text(
+                          'Ask AI',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      );
+                    },
+                  ),
             body: Column(
               children: [
                 TopBar(
                   onHome: onBack ?? () => Navigator.of(context).pop(),
                   onProfile: onProfile,
                   onSettings: onSettings,
+                  onSignOut: onSignOut,
                 ),
                 Expanded(
                   child: BlocBuilder<RepoDetailCubit, RepoDetailState>(
@@ -91,6 +135,12 @@ class _RepoDetailView extends StatelessWidget {
                           repo: repo,
                           isDark: isDark,
                           generating: true,
+                        ),
+                      RepoDetailRateLimit(:final repo, :final secondsRemaining) =>
+                        _RateLimitView(
+                          repo: repo,
+                          secondsRemaining: secondsRemaining,
+                          isDark: isDark,
                         ),
                       RepoDetailError(:final message) => _ErrorView(
                           message: message,
@@ -114,17 +164,21 @@ class _DetailContent extends StatelessWidget {
   final RepoEntity repo;
   final bool isDark;
   final bool generating;
+  final Widget? rateLimitBanner;
 
   const _DetailContent({
     required this.repo,
     required this.isDark,
     required this.generating,
+    this.rateLimitBanner,
   });
 
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
+        if (rateLimitBanner != null)
+          SliverToBoxAdapter(child: rateLimitBanner!),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -528,6 +582,53 @@ class _NotSummarizedCard extends StatelessWidget {
   }
 }
 
+class _RateLimitView extends StatelessWidget {
+  final RepoEntity repo;
+  final int secondsRemaining;
+  final bool isDark;
+  const _RateLimitView({required this.repo, required this.secondsRemaining, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.accent(isDark);
+    return _DetailContent(
+      repo: repo,
+      isDark: isDark,
+      generating: false,
+      rateLimitBanner: Container(
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.warning(isDark).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.warning(isDark).withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.hourglass_top_rounded, size: 16, color: AppColors.warning(isDark)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'API quota reached — retrying in ${secondsRemaining}s',
+                style: TextStyle(fontSize: 13, color: AppColors.warning(isDark)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => context.read<RepoDetailCubit>().generateSummary(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(6)),
+                child: const Text('Now', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LoadingView extends StatelessWidget {
   final bool isDark;
   const _LoadingView({required this.isDark});
@@ -549,14 +650,20 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger(isDark)),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.secondary(isDark))),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 14, color: AppColors.secondary(isDark)),
+            ),
             const SizedBox(height: 20),
             GestureDetector(
               onTap: onRetry,

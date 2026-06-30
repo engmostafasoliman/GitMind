@@ -26,3 +26,9 @@ final class RepoDetailError extends RepoDetailState {
   final String message;
   const RepoDetailError(this.message);
 }
+
+final class RepoDetailRateLimit extends RepoDetailState {
+  final RepoEntity repo;
+  final int secondsRemaining;
+  const RepoDetailRateLimit(this.repo, this.secondsRemaining);
+}

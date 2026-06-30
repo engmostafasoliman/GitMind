@@ -23,6 +23,8 @@ class RepoListCubit extends Cubit<RepoListState> {
         ));
       case ApiFailure(:final message):
         emit(RepoListError(message));
+      case ApiRateLimit():
+        emit(const RepoListError('Service temporarily unavailable. Please try again.'));
     }
   }
 
@@ -59,6 +61,26 @@ class RepoListCubit extends Cubit<RepoListState> {
     if (current is! RepoListLoaded) return;
     final updated = current.allRepos
         .map((r) => r.id == repoId ? r.withSummary(summary) : r)
+        .toList();
+    emit(_applyFilters(current.copyWith(allRepos: updated)));
+  }
+
+  void clearAllSummarized() {
+    final current = state;
+    if (current is! RepoListLoaded) return;
+    final updated = current.allRepos
+        .map((r) => RepoEntity(
+              id: r.id,
+              name: r.name,
+              owner: r.owner,
+              description: r.description,
+              language: r.language,
+              stars: r.stars,
+              updatedAgo: r.updatedAgo,
+              license: r.license,
+              lastCommit: r.lastCommit,
+              summarized: false,
+            ))
         .toList();
     emit(_applyFilters(current.copyWith(allRepos: updated)));
   }

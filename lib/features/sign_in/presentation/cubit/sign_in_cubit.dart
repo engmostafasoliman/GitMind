@@ -17,6 +17,8 @@ class SignInCubit extends Cubit<SignInState> {
         emit(SignInSuccess(data));
       case ApiFailure(:final message):
         emit(SignInError(message));
+      case ApiRateLimit():
+        emit(const SignInError('Service temporarily unavailable. Please try again.'));
     }
   }
 }

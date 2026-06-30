@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../features/settings/domain/repositories/settings_repository.dart';
 import '../../domain/entities/repo_summary_entity.dart';
 import '../models/repo_model.dart';
 import '../services/gemini_repo_summary_service.dart';
@@ -13,6 +14,7 @@ class GitHubRepoDataSource implements RepoDataSource {
   final FlutterSecureStorage _storage;
   final GeminiRepoSummaryService _gemini;
   final RepoSummaryDb _db;
+  final SettingsRepository _settingsRepo;
   List<RepoModel>? _cache;
   final Map<String, RepoSummaryEntity> _summaryCache = {};
 
@@ -20,9 +22,11 @@ class GitHubRepoDataSource implements RepoDataSource {
     FlutterSecureStorage? storage,
     required GeminiRepoSummaryService gemini,
     required RepoSummaryDb db,
+    required SettingsRepository settingsRepo,
   })  : _storage = storage ?? const FlutterSecureStorage(),
         _gemini = gemini,
-        _db = db;
+        _db = db,
+        _settingsRepo = settingsRepo;
 
   Future<String> get _token async {
     final token = await _storage.read(key: 'github_access_token');
@@ -100,8 +104,12 @@ class GitHubRepoDataSource implements RepoDataSource {
   }
 
   @override
-  Future<RepoSummaryEntity> generateSummary(String repoId, {bool force = false}) async {
-    if (!force) {
+  Future<RepoSummaryEntity> generateSummary(String repoId,
+      {bool force = false}) async {
+    final settings = await _settingsRepo.load();
+    final effectiveForce = force || !settings.cacheResults;
+
+    if (!effectiveForce) {
       // 1. In-memory cache
       if (_summaryCache.containsKey(repoId)) return _summaryCache[repoId]!;
 
@@ -157,6 +165,7 @@ class GitHubRepoDataSource implements RepoDataSource {
       languages: languages,
       stars: repo.stars,
       readme: readme,
+      model: settings.geminiModel,
     );
 
     // Persist and cache
@@ -165,6 +174,27 @@ class GitHubRepoDataSource implements RepoDataSource {
     _applyToCache(repoId, summary);
 
     return summary;
+  }
+
+  @override
+  Future<void> clearSummaries() async {
+    _summaryCache.clear();
+    await _db.deleteAll();
+    if (_cache != null) {
+      _cache = _cache!.map((r) => RepoModel(
+            id: r.id,
+            name: r.name,
+            owner: r.owner,
+            description: r.description,
+            language: r.language,
+            stars: r.stars,
+            updatedAgo: r.updatedAgo,
+            license: r.license,
+            lastCommit: r.lastCommit,
+            summarized: false,
+            summary: null,
+          )).toList();
+    }
   }
 
   void _applyToCache(String repoId, RepoSummaryEntity summary) {

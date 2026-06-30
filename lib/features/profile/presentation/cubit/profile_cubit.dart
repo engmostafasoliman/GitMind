@@ -21,6 +21,8 @@ class ProfileCubit extends Cubit<ProfileState> {
         emit(ProfileLoaded(user: _user, ownedRepos: owned));
       case ApiFailure(:final message):
         emit(ProfileError(message));
+      case ApiRateLimit():
+        emit(const ProfileError('Service temporarily unavailable. Please try again.'));
     }
   }
 }

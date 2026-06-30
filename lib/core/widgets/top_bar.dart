@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../di/injection.dart';
 import '../theme/app_colors.dart';
 import '../theme/theme_cubit.dart';
+import '../../features/profile/domain/entities/user_entity.dart';
 
 class TopBar extends StatelessWidget {
   final String? searchQuery;
@@ -23,9 +25,9 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ThemeCubit, ThemeMode>(
-      builder: (context, themeMode) {
-        final isDark = themeMode == ThemeMode.dark;
+    return BlocBuilder<ThemeCubit, AppThemeData>(
+      builder: (context, theme) {
+        final isDark = theme.isDark;
         return Container(
           height: 64 + MediaQuery.of(context).padding.top,
           padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -72,39 +74,21 @@ class _Logo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = AppColors.accent(isDark);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: accent.withValues(alpha: 0.30)),
-          ),
-          child: Center(
-            child: Text(
-              '</>',
-              style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: accent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(7),
+          child: Image.asset('assets/appicon.png', width: 28, height: 28, fit: BoxFit.cover),
         ),
         const SizedBox(width: 8),
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: 'repo', style: TextStyle(color: AppColors.text(isDark))),
-              TextSpan(text: '·', style: TextStyle(color: accent)),
-              TextSpan(text: 'insights', style: TextStyle(color: AppColors.text(isDark))),
-            ],
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: FontWeight.w500),
+        Text(
+          'GitMind',
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppColors.text(isDark),
           ),
         ),
       ],
@@ -207,19 +191,68 @@ class _ProfileButton extends StatelessWidget {
         PopupMenuDivider(color: AppColors.border(isDark), height: 1),
         PopupMenuItem(value: 'signout', child: Row(children: [Icon(Icons.logout, size: 16, color: AppColors.danger(isDark)), const SizedBox(width: 8), Text('Sign out', style: TextStyle(color: AppColors.danger(isDark)))])),
       ],
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF2F81F7), Color(0xFF9b6dff)],
-          ),
+      child: _AvatarButton(),
+    );
+  }
+}
+
+class _AvatarButton extends StatelessWidget {
+  const _AvatarButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = getIt.isRegistered<UserEntity>() ? getIt<UserEntity>() : null;
+    final avatarUrl = user?.avatarUrl;
+    final initials = user?.initials ?? '';
+
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: avatarUrl == null
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2F81F7), Color(0xFF9b6dff)],
+              )
+            : null,
+      ),
+      child: ClipOval(
+        child: avatarUrl != null
+            ? Image.network(
+                avatarUrl,
+                width: 36,
+                height: 36,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _InitialsFallback(initials: initials),
+              )
+            : _InitialsFallback(initials: initials),
+      ),
+    );
+  }
+}
+
+class _InitialsFallback extends StatelessWidget {
+  final String initials;
+  const _InitialsFallback({required this.initials});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2F81F7), Color(0xFF9b6dff)],
         ),
-        child: const Center(
-          child: Text('MS', style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
     );
