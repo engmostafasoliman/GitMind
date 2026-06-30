@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../../../../core/theme/app_colors.dart';
+
 class MessageBubble extends StatelessWidget {
   final String text;
   final bool isUser;
+  final bool isDark;
 
   const MessageBubble({
     super.key,
     required this.text,
     required this.isUser,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
+    final accent = AppColors.accent(isDark);
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Row(
@@ -21,13 +24,15 @@ class MessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isUser) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: colorScheme.primaryContainer,
-              child: Icon(
-                Icons.auto_awesome,
-                size: 16,
-                color: colorScheme.onPrimaryContainer,
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(Icons.auto_awesome_rounded, size: 14, color: accent),
               ),
             ),
             const SizedBox(width: 8),
@@ -40,23 +45,28 @@ class MessageBubble extends StatelessWidget {
               margin: const EdgeInsets.symmetric(vertical: 4),
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
               decoration: BoxDecoration(
-                color: isUser ? colorScheme.primary : colorScheme.surfaceContainerHigh,
+                color: isUser ? accent : AppColors.surface(isDark),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
                   bottomLeft: Radius.circular(isUser ? 16 : 4),
                   bottomRight: Radius.circular(isUser ? 4 : 16),
                 ),
+                border: isUser
+                    ? null
+                    : Border.all(color: AppColors.border(isDark)),
               ),
               child: Text(
                 text,
                 style: TextStyle(
-                  color: isUser ? colorScheme.onPrimary : colorScheme.onSurface,
+                  color: isUser ? Colors.white : AppColors.text(isDark),
                   fontSize: 15,
+                  height: 1.45,
                 ),
               ),
             ),
           ),
+          if (isUser) const SizedBox(width: 36),
         ],
       ),
     );
