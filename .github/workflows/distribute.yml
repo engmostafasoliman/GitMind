@@ -77,32 +77,17 @@ jobs:
             --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
             --release
 
-      - name: Build prod APK
-        env:
-          KEYSTORE_PATH: keystore.jks
-          KEY_STORE_PASSWORD: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          flutter build apk \
-            --flavor prod \
-            --target lib/main_prod.dart \
-            --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
-            --release
-
-      - name: Upload APKs as artifacts
+      - name: Upload APK as artifact
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: apks
-          path: |
-            build/app/outputs/flutter-apk/app-dev-release.apk
-            build/app/outputs/flutter-apk/app-prod-release.apk
+          name: gitmind-dev-release
+          path: build/app/outputs/flutter-apk/app-dev-release.apk
 
-      - name: Distribute prod to Firebase App Distribution
+      - name: Distribute to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
           groups: ${{ secrets.FIREBASE_TESTER_GROUPS }}
-          file: build/app/outputs/flutter-apk/app-prod-release.apk
+          file: build/app/outputs/flutter-apk/app-dev-release.apk
           releaseNotes: ${{ github.event.inputs.release_notes || 'New build available' }}
