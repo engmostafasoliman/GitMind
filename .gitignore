@@ -8,6 +8,10 @@ CLAUDE.md
 
 # Environment secrets
 .env
+android/key.properties
+android/app/keystore.jks
+*.jks
+*.keystore
 .env.dev
 .env.prod
 dart_defines/

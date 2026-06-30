@@ -7,6 +7,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Load signing properties from key.properties (local) or environment variables (CI)
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = java.util.Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.codemind.chatyaiagent"
     compileSdk = flutter.compileSdkVersion
@@ -28,6 +35,21 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(
+                keystoreProperties["storeFile"] as? String
+                    ?: System.getenv("KEYSTORE_PATH") ?: "keystore.jks"
+            )
+            storePassword = keystoreProperties["storePassword"] as? String
+                ?: System.getenv("KEY_STORE_PASSWORD") ?: ""
+            keyAlias = keystoreProperties["keyAlias"] as? String
+                ?: System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = keystoreProperties["keyPassword"] as? String
+                ?: System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
     flavorDimensions += "environment"
 
     productFlavors {
@@ -35,12 +57,12 @@ android {
             dimension = "environment"
             applicationId = "com.codemind.chatyaiagent.dev"
             versionNameSuffix = "-dev"
-            resValue("string", "app_name", "Chaty Agent Dev")
+            resValue("string", "app_name", "GitMind Dev")
         }
         create("prod") {
             dimension = "environment"
             applicationId = "com.codemind.chatyaiagent"
-            resValue("string", "app_name", "Chaty Agent")
+            resValue("string", "app_name", "GitMind")
         }
     }
 
@@ -48,7 +70,7 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
