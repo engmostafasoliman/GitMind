@@ -194,7 +194,7 @@ class _DetailContent extends StatelessWidget {
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
             child: repo.summarized && repo.summary != null
                 ? _SummaryContent(
                     summary: repo.summary!,
@@ -347,6 +347,41 @@ class _SummaryContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          children: [
+            ConfidenceBadge(confidence: summary.confidence),
+            const Spacer(),
+            GestureDetector(
+              onTap: generating ? null : onRegenerate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.surface(isDark),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border(isDark)),
+                ),
+                child: generating
+                    ? SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 1.5, color: accent),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh_rounded, size: 14, color: accent),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Re-summarize',
+                            style: TextStyle(fontSize: 13, color: accent),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
         _Section(
           title: 'What it does',
           isDark: isDark,
@@ -392,41 +427,6 @@ class _SummaryContent extends StatelessWidget {
                   color: AppColors.warning(isDark),
                   isDark: isDark,
                 ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            ConfidenceBadge(confidence: summary.confidence),
-            const Spacer(),
-            GestureDetector(
-              onTap: generating ? null : onRegenerate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surface(isDark),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border(isDark)),
-                ),
-                child: generating
-                    ? SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 1.5, color: accent),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.refresh_rounded, size: 14, color: accent),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Re-summarize',
-                            style: TextStyle(fontSize: 13, color: accent),
-                          ),
-                        ],
-                      ),
               ),
             ),
           ],
