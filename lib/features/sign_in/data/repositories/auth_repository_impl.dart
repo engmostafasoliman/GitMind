@@ -28,4 +28,11 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   UserEntity? get currentUser => _currentUser;
+
+  @override
+  Future<UserEntity?> getPersistedUser() async {
+    final user = await _dataSource.getPersistedUser();
+    _currentUser = user;
+    return user;
+  }
 }

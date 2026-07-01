@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
-  final VoidCallback onDone;
+  final Future<void> Function() onDone;
   const SplashScreen({super.key, required this.onDone});
 
   @override

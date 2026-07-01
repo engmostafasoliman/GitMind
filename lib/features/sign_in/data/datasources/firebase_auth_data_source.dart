@@ -51,6 +51,16 @@ class FirebaseAuthDataSource {
 
   Future<String?> get accessToken => _storage.read(key: 'github_access_token');
 
+  Future<UserEntity?> getPersistedUser() async {
+    if (_auth.currentUser == null) return null;
+    try {
+      final token = await _storage.read(key: 'github_access_token');
+      return await _buildUserEntity(token);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<UserEntity> _buildUserEntity(String? token) async {
     if (token == null) {
       final fb = _auth.currentUser!;

@@ -119,11 +119,18 @@ class MyApp extends StatelessWidget {
             theme: ThemeData.light(useMaterial3: true),
             darkTheme: ThemeData.dark(useMaterial3: true),
             home: SplashScreen(
-              onDone: () => _navigatorKey.currentState?.pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => SignInScreen(onSignIn: _onSignIn),
-                ),
-              ),
+              onDone: () async {
+                final user = await getIt<AuthRepository>().getPersistedUser();
+                if (user != null) {
+                  _onSignIn(user);
+                } else {
+                  _navigatorKey.currentState?.pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => SignInScreen(onSignIn: _onSignIn),
+                    ),
+                  );
+                }
+              },
             ),
           );
         },

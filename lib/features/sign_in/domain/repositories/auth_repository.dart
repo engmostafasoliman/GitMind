@@ -5,4 +5,5 @@ abstract class AuthRepository {
   Future<ApiResult<UserEntity>> signInWithGitHub();
   Future<void> signOut();
   UserEntity? get currentUser;
+  Future<UserEntity?> getPersistedUser();
 }
