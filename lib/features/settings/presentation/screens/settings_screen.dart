@@ -155,6 +155,7 @@ class SettingsScreen extends StatelessWidget {
               value: settings.geminiModel,
               width: 210,
               items: const {
+                'gemini-flash-latest': 'Gemini Flash (Latest)',
                 'gemini-2.0-flash': 'Gemini 2.0 Flash',
                 'gemini-2.5-pro': 'Gemini 2.5 Pro',
               },
