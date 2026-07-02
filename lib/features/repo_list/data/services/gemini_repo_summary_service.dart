@@ -69,40 +69,20 @@ class GeminiRepoSummaryService {
     int stars,
     String readme,
   ) {
-    final langList = languages.entries
-        .map((e) => '${e.key}: ${e.value} bytes')
-        .join(', ');
+    final langList = languages.keys.take(6).join(', ');
 
     final readmeSection = readme.isNotEmpty
-        ? 'README (truncated to 3000 chars):\n${readme.substring(0, readme.length.clamp(0, 3000))}'
-        : 'No README available.';
+        ? 'README:\n${readme.substring(0, readme.length.clamp(0, 1500))}'
+        : '';
 
     return '''
-Analyze this GitHub repository and return a JSON summary.
+Summarize this GitHub repo as JSON only — no markdown, no explanation.
 
-Repository: $owner/$name
-Description: ${description.isNotEmpty ? description : 'No description'}
-Primary language: $language
-Languages: $langList
-Stars: $stars
-
+$owner/$name · $language · $stars stars
+${description.isNotEmpty ? description : ''}
+${langList.isNotEmpty ? 'Languages: $langList' : ''}
 $readmeSection
 
-Return ONLY valid JSON with this exact structure (no markdown, no explanation):
-{
-  "whatItDoes": "One clear sentence describing what this project does and who it is for.",
-  "techStack": ["Tech1", "Tech2", "Tech3"],
-  "strengths": ["Strength 1", "Strength 2", "Strength 3"],
-  "weaknesses": ["Weakness 1", "Weakness 2"],
-  "confidence": "high"
-}
-
-Rules:
-- confidence must be "high", "medium", or "low" based on how much info is available
-- techStack: list the main technologies, frameworks, and tools (3-6 items)
-- strengths: specific, concrete strengths observed from the code/README (2-4 items)
-- weaknesses: honest limitations or gaps (1-3 items)
-- Return ONLY the JSON object, nothing else
-''';
+{"whatItDoes":"...","techStack":["..."],"strengths":["..."],"weaknesses":["..."],"confidence":"high|medium|low"}''';
   }
 }

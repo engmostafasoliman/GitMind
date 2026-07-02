@@ -10,10 +10,22 @@ class GeminiChatRepositoryImpl implements ChatRepository {
 
   const GeminiChatRepositoryImpl(this._service);
 
+  static const _maxVisibleHistory = 10;
+
   @override
   Future<ApiResult<ChatMessage>> sendMessage(List<ChatMessage> messages) async {
     try {
-      final models = messages
+      // Always include hidden system context; cap visible history to last N
+      final hidden = messages.where((m) => m.isHidden).toList();
+      final visible = messages.where((m) => !m.isHidden).toList();
+      final trimmed = [
+        ...hidden,
+        ...visible.length > _maxVisibleHistory
+            ? visible.sublist(visible.length - _maxVisibleHistory)
+            : visible,
+      ];
+
+      final models = trimmed
           .map((m) => ChatMessageModel(
                 role: m.role,
                 parts: [ChatPart(text: m.text)],
