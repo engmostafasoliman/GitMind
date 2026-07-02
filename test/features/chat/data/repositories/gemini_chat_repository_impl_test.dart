@@ -52,15 +52,13 @@ void main() {
       expect(failure.message, contains('No internet connection'));
     });
 
-    test('returns ApiFailure with humanized message on RateLimitException',
-        () async {
+    test('returns ApiRateLimit on RateLimitException', () async {
       when(() => mockService.sendMessages(any()))
           .thenThrow(const RateLimitException());
 
       final result = await repository.sendMessage(tMessages);
 
-      final failure = result as ApiFailure<ChatMessage>;
-      expect(failure.message, contains('too fast'));
+      expect(result, isA<ApiRateLimit<ChatMessage>>());
     });
 
     test('returns ApiFailure with humanized message on ServerException',
@@ -96,6 +94,80 @@ void main() {
       expect(sentModels.length, 1);
       expect(sentModels.first.role, 'user');
       expect(sentModels.first.parts.first.text, 'Explain how AI works');
+    });
+  });
+
+  group('sendMessage — history trimming', () {
+    List<ChatMessage> _makeHistory({
+      required int hiddenCount,
+      required int visibleCount,
+    }) {
+      return [
+        for (var i = 0; i < hiddenCount; i++)
+          ChatMessage(role: i.isEven ? 'user' : 'model', text: 'hidden $i', isHidden: true),
+        for (var i = 0; i < visibleCount; i++)
+          ChatMessage(role: i.isEven ? 'user' : 'model', text: 'visible $i'),
+      ];
+    }
+
+    test('sends all messages when visible count is within limit', () async {
+      when(() => mockService.sendMessages(any()))
+          .thenAnswer((_) async => tResponseModel);
+
+      final messages = _makeHistory(hiddenCount: 2, visibleCount: 5);
+      await repository.sendMessage(messages);
+
+      final captured = verify(() => mockService.sendMessages(captureAny())).captured;
+      final sent = captured.first as List<ChatMessageModel>;
+      expect(sent.length, 7); // 2 hidden + 5 visible
+    });
+
+    test('caps visible history at 10 messages, keeps all hidden', () async {
+      when(() => mockService.sendMessages(any()))
+          .thenAnswer((_) async => tResponseModel);
+
+      final messages = _makeHistory(hiddenCount: 2, visibleCount: 15);
+      await repository.sendMessage(messages);
+
+      final captured = verify(() => mockService.sendMessages(captureAny())).captured;
+      final sent = captured.first as List<ChatMessageModel>;
+      expect(sent.length, 12); // 2 hidden + last 10 visible
+    });
+
+    test('keeps the most recent visible messages when trimming', () async {
+      when(() => mockService.sendMessages(any()))
+          .thenAnswer((_) async => tResponseModel);
+
+      final messages = _makeHistory(hiddenCount: 0, visibleCount: 12);
+      await repository.sendMessage(messages);
+
+      final captured = verify(() => mockService.sendMessages(captureAny())).captured;
+      final sent = captured.first as List<ChatMessageModel>;
+      // Last 10 visible → texts "visible 2" through "visible 11"
+      expect(sent.first.parts.first.text, 'visible 2');
+      expect(sent.last.parts.first.text, 'visible 11');
+    });
+
+    test('always preserves hidden system context before visible history', () async {
+      when(() => mockService.sendMessages(any()))
+          .thenAnswer((_) async => tResponseModel);
+
+      final messages = _makeHistory(hiddenCount: 2, visibleCount: 15);
+      await repository.sendMessage(messages);
+
+      final captured = verify(() => mockService.sendMessages(captureAny())).captured;
+      final sent = captured.first as List<ChatMessageModel>;
+      expect(sent[0].parts.first.text, 'hidden 0');
+      expect(sent[1].parts.first.text, 'hidden 1');
+    });
+
+    test('returns ApiRateLimit when service throws RateLimitException', () async {
+      when(() => mockService.sendMessages(any()))
+          .thenThrow(const RateLimitException());
+
+      final result = await repository.sendMessage(tMessages);
+
+      expect(result, isA<ApiRateLimit<ChatMessage>>());
     });
   });
 }

@@ -1,4 +1,6 @@
 import 'package:bloc_test/bloc_test.dart';
+import 'package:chaty_ai_agent/core/analytics/analytics_service.dart';
+import 'package:chaty_ai_agent/core/di/injection.dart';
 import 'package:chaty_ai_agent/core/theme/theme_cubit.dart';
 import 'package:chaty_ai_agent/features/repo_list/domain/repositories/repo_repository.dart';
 import 'package:chaty_ai_agent/features/repo_list/domain/usecases/clear_summaries_usecase.dart';
@@ -10,14 +12,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockSettingsRepository extends Mock implements SettingsRepository {}
-
 class MockRepoRepository extends Mock implements RepoRepository {}
+class MockAnalyticsService extends Mock implements AnalyticsService {}
 
 void main() {
   late MockSettingsRepository mockRepo;
   late ThemeCubit themeCubit;
   late ClearSummariesUseCase clearSummaries;
   late MockRepoRepository mockRepoRepository;
+  late MockAnalyticsService mockAnalytics;
 
   setUpAll(() {
     registerFallbackValue(SettingsEntity.defaults);
@@ -28,10 +31,23 @@ void main() {
     themeCubit = ThemeCubit();
     mockRepoRepository = MockRepoRepository();
     clearSummaries = ClearSummariesUseCase(mockRepoRepository);
+    mockAnalytics = MockAnalyticsService();
 
     when(() => mockRepo.load()).thenAnswer((_) async => SettingsEntity.defaults);
     when(() => mockRepo.save(any())).thenAnswer((_) async {});
     when(() => mockRepoRepository.clearSummaries()).thenAnswer((_) async {});
+    when(() => mockAnalytics.logModelChanged(any())).thenAnswer((_) async {});
+
+    if (getIt.isRegistered<AnalyticsService>()) {
+      getIt.unregister<AnalyticsService>();
+    }
+    getIt.registerSingleton<AnalyticsService>(mockAnalytics);
+  });
+
+  tearDown(() {
+    if (getIt.isRegistered<AnalyticsService>()) {
+      getIt.unregister<AnalyticsService>();
+    }
   });
 
   SettingsCubit buildCubit() => SettingsCubit(mockRepo, themeCubit, clearSummaries);

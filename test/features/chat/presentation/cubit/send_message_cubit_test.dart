@@ -1,4 +1,5 @@
 import 'package:bloc_test/bloc_test.dart';
+import 'package:chaty_ai_agent/core/analytics/analytics_service.dart';
 import 'package:chaty_ai_agent/core/result/api_result.dart';
 import 'package:chaty_ai_agent/features/chat/domain/entities/chat_message.dart';
 import 'package:chaty_ai_agent/features/chat/domain/usecases/send_message_use_case.dart';
@@ -10,13 +11,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockSendMessageUseCase extends Mock implements SendMessageUseCase {}
+class MockAnalyticsService extends Mock implements AnalyticsService {}
 
 void main() {
   late MockSendMessageUseCase mockUseCase;
+  late MockAnalyticsService mockAnalytics;
 
   setUp(() {
     mockUseCase = MockSendMessageUseCase();
+    mockAnalytics = MockAnalyticsService();
     registerFallbackValue(<ChatMessage>[]);
+
+    when(() => mockAnalytics.logChatOpened(any())).thenAnswer((_) async {});
+    when(() => mockAnalytics.logMessageSent(any())).thenAnswer((_) async {});
+    when(() => mockAnalytics.logChatRateLimit(any())).thenAnswer((_) async {});
   });
 
   const tReply = ChatMessage(role: 'model', text: 'AI is...');
@@ -43,7 +51,7 @@ void main() {
 
   group('SendMessageCubit — initial state', () {
     test('starts as ChatIdle with empty messages', () {
-      final cubit = SendMessageCubit(mockUseCase);
+      final cubit = SendMessageCubit(mockUseCase, analytics: mockAnalytics);
       expect(cubit.state, isA<ChatIdle>());
       expect(cubit.state.messages, isEmpty);
     });
@@ -54,7 +62,7 @@ void main() {
       'emits [ChatLoading, ChatIdle] on success',
       build: () {
         when(() => mockUseCase(any())).thenAnswer((_) async => const ApiSuccess(tReply));
-        return SendMessageCubit(mockUseCase);
+        return SendMessageCubit(mockUseCase, analytics: mockAnalytics);
       },
       act: (cubit) => cubit.send('Explain AI'),
       expect: () => [isA<ChatLoading>(), isA<ChatIdle>()],
@@ -64,7 +72,7 @@ void main() {
       'emits [ChatLoading, ChatError] on failure',
       build: () {
         when(() => mockUseCase(any())).thenAnswer((_) async => const ApiFailure('Error occurred'));
-        return SendMessageCubit(mockUseCase);
+        return SendMessageCubit(mockUseCase, analytics: mockAnalytics);
       },
       act: (cubit) => cubit.send('Explain AI'),
       expect: () => [isA<ChatLoading>(), isA<ChatError>()],
@@ -74,7 +82,7 @@ void main() {
       'ChatIdle after success contains user message and reply',
       build: () {
         when(() => mockUseCase(any())).thenAnswer((_) async => const ApiSuccess(tReply));
-        return SendMessageCubit(mockUseCase);
+        return SendMessageCubit(mockUseCase, analytics: mockAnalytics);
       },
       act: (cubit) => cubit.send('Explain AI'),
       verify: (cubit) {
@@ -90,7 +98,7 @@ void main() {
       'ChatError contains error message',
       build: () {
         when(() => mockUseCase(any())).thenAnswer((_) async => const ApiFailure('Error occurred'));
-        return SendMessageCubit(mockUseCase);
+        return SendMessageCubit(mockUseCase, analytics: mockAnalytics);
       },
       act: (cubit) => cubit.send('Explain AI'),
       verify: (cubit) {
@@ -103,7 +111,7 @@ void main() {
       'trims whitespace from text before sending',
       build: () {
         when(() => mockUseCase(any())).thenAnswer((_) async => const ApiSuccess(tReply));
-        return SendMessageCubit(mockUseCase);
+        return SendMessageCubit(mockUseCase, analytics: mockAnalytics);
       },
       act: (cubit) => cubit.send('  hello  '),
       verify: (cubit) {
@@ -114,7 +122,7 @@ void main() {
 
     blocTest<SendMessageCubit, SendMessageState>(
       'does nothing when text is empty or whitespace',
-      build: () => SendMessageCubit(mockUseCase),
+      build: () => SendMessageCubit(mockUseCase, analytics: mockAnalytics),
       act: (cubit) async {
         await cubit.send('');
         await cubit.send('   ');
@@ -128,7 +136,7 @@ void main() {
       'transitions ChatError → ChatIdle preserving messages',
       build: () {
         when(() => mockUseCase(any())).thenAnswer((_) async => const ApiFailure('oops'));
-        return SendMessageCubit(mockUseCase);
+        return SendMessageCubit(mockUseCase, analytics: mockAnalytics);
       },
       act: (cubit) async {
         await cubit.send('hello');
@@ -142,7 +150,7 @@ void main() {
 
     blocTest<SendMessageCubit, SendMessageState>(
       'does nothing when state is not ChatError',
-      build: () => SendMessageCubit(mockUseCase),
+      build: () => SendMessageCubit(mockUseCase, analytics: mockAnalytics),
       act: (cubit) => cubit.dismissError(),
       expect: () => [],
     );
@@ -151,7 +159,7 @@ void main() {
   group('SendMessageCubit — initWithRepo()', () {
     blocTest<SendMessageCubit, SendMessageState>(
       'emits ChatIdle with 2 hidden messages when repo has a summary',
-      build: () => SendMessageCubit(mockUseCase),
+      build: () => SendMessageCubit(mockUseCase, analytics: mockAnalytics),
       act: (cubit) => cubit.initWithRepo(repoWithSummary()),
       verify: (cubit) {
         final state = cubit.state as ChatIdle;
@@ -165,8 +173,34 @@ void main() {
     );
 
     blocTest<SendMessageCubit, SendMessageState>(
+      'hidden prompt message references GitMind persona',
+      build: () => SendMessageCubit(mockUseCase, analytics: mockAnalytics),
+      act: (cubit) => cubit.initWithRepo(repoWithSummary()),
+      verify: (cubit) {
+        final state = cubit.state as ChatIdle;
+        final prompt = state.messages[0].text;
+        expect(prompt, contains('GitMind'));
+        expect(prompt, contains('my-repo'));
+        expect(prompt, contains('user'));
+      },
+    );
+
+    blocTest<SendMessageCubit, SendMessageState>(
+      'hidden greeting message is from model and mentions GitMind',
+      build: () => SendMessageCubit(mockUseCase, analytics: mockAnalytics),
+      act: (cubit) => cubit.initWithRepo(repoWithSummary()),
+      verify: (cubit) {
+        final state = cubit.state as ChatIdle;
+        final greeting = state.messages[1];
+        expect(greeting.role, 'model');
+        expect(greeting.text, contains('GitMind'));
+        expect(greeting.text, contains('my-repo'));
+      },
+    );
+
+    blocTest<SendMessageCubit, SendMessageState>(
       'does nothing when repo has no summary',
-      build: () => SendMessageCubit(mockUseCase),
+      build: () => SendMessageCubit(mockUseCase, analytics: mockAnalytics),
       act: (cubit) => cubit.initWithRepo(
         const RepoEntity(
           id: '1', name: 'r', owner: 'u', description: '', language: 'Dart',
@@ -180,7 +214,7 @@ void main() {
       'subsequent send after initWithRepo includes hidden messages in history',
       build: () {
         when(() => mockUseCase(any())).thenAnswer((_) async => const ApiSuccess(tReply));
-        return SendMessageCubit(mockUseCase);
+        return SendMessageCubit(mockUseCase, analytics: mockAnalytics);
       },
       act: (cubit) async {
         cubit.initWithRepo(repoWithSummary());
