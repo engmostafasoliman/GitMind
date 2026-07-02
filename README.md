@@ -4,21 +4,24 @@ A Flutter app that lets you explore your GitHub repositories through AI-powered 
 
 ## Features
 
-- **GitHub OAuth sign-in** via Firebase Auth
+- **GitHub OAuth sign-in** via Firebase Auth with session persistence across app restarts
 - **Real repository list** fetched from the GitHub API with search, filter, and sort
 - **AI summaries** — one-tap Gemini-powered analysis of any repo (what it does, tech stack, strengths, weaknesses)
-- **Repo-aware AI chat** — ask anything about a specific repo; Gemini answers with full context
+- **GitMind AI chat** — repo-aware assistant named GitMind; ask anything about a specific repo and get context-aware answers
+- **Debounce & throttle** — 300ms debounce on search, 10s per-repo throttle on Gemini calls to prevent redundant API usage
+- **Token optimization** — summary prompt ~50% smaller (1500-char README cap, compact format); chat history capped at last 10 visible messages
 - **Rate limit handling** — 429 responses trigger a 15-second countdown with auto-retry in both chat and summaries
 - **SQLite persistence** — summaries cached locally; cleared on sign-out
 - **Profile screen** — GitHub avatar, bio, stats, and owned repos
-- **Settings** — model selection (Gemini 2.0 Flash / 2.5 Pro), auto-summarize toggle, cache control
+- **Settings** — model selection, auto-summarize toggle, cache control
 - **Animated splash screen** and shimmer skeletons on all loading states
 - **Dark / light theme** toggle
+- **Firebase App Distribution** — GitHub Actions workflow for distributing dev builds to testers
 - Dev and Prod flavors with separate bundle IDs
 
 ## Screenshots
 
-| Sign In | Repo List | Repo Detail | Chat |
+| Sign In | Repo List | Repo Detail | GitMind Chat |
 |---|---|---|---|
 | GitHub OAuth | Search & filter | AI summary | Context-aware Q&A |
 
@@ -31,7 +34,7 @@ A Flutter app that lets you explore your GitHub repositories through AI-powered 
 | `firebase_auth` | GitHub OAuth |
 | `http` | Network requests |
 | `sqflite` | Local summary cache |
-| `flutter_secure_storage` | GitHub access token storage |
+| `flutter_secure_storage` | GitHub access token + session persistence |
 | `shared_preferences` | Settings persistence |
 | `url_launcher` | Open GitHub profile in browser |
 | `flutter_native_splash` | Animated splash screen |
@@ -50,13 +53,13 @@ lib/
 │   └── widgets/        # TopBar, ShimmerBox, StatusPill
 │
 └── features/
-    ├── chat/           # Gemini chat with repo context, cooldown, 429 countdown
+    ├── chat/           # GitMind AI chat with repo context, cooldown, 429 countdown
     ├── profile/        # GitHub user profile, avatar, stats, owned repos
-    ├── repo_detail/    # Repo header, AI summary, regenerate, rate-limit banner
-    ├── repo_list/      # GitHub repos, search/filter/sort, Gemini summary service
+    ├── repo_detail/    # Repo header, AI summary, re-summarize, rate-limit banner
+    ├── repo_list/      # GitHub repos, search/filter/sort, debounce, Gemini throttle
     ├── settings/       # Model picker, auto-summarize, cache, persistence
-    ├── sign_in/        # Firebase GitHub OAuth, token storage
-    └── splash/         # Animated splash with logo
+    ├── sign_in/        # Firebase GitHub OAuth, token storage, session persistence
+    └── splash/         # Animated splash with session check
 ```
 
 Each feature follows:
@@ -70,7 +73,7 @@ domain/
   repositories/   # Abstract interface
   usecases/       # Single-purpose use cases
 presentation/
-  cubit/          # State logic, Timer-based countdowns
+  cubit/          # State logic, Timer-based countdowns, debounce
   screens/        # UI — observes state, zero business logic
   widgets/        # Reusable screen-level widgets, skeletons
 ```
@@ -104,9 +107,17 @@ presentation/
 ### Setup
 
 ```bash
-git clone https://github.com/engmostafasoliman/Chaty_AI_-Agent.git
-cd Chaty_AI_-Agent
+git clone https://github.com/engmostafasoliman/GitMind.git
+cd GitMind
 flutter pub get
+```
+
+Create a `.env` file in the project root (gitignored — never commit this):
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+GITHUB_CLIENT_ID=your_github_oauth_client_id
+GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
 ```
 
 ### Run
@@ -116,16 +127,35 @@ flutter pub get
 flutter run \
   --flavor dev \
   --target lib/main_dev.dart \
-  --dart-define=GEMINI_API_KEY=your_key_here
+  --dart-define=GEMINI_API_KEY=$(grep GEMINI_API_KEY .env | cut -d= -f2) \
+  --dart-define=GITHUB_CLIENT_ID=$(grep GITHUB_CLIENT_ID .env | cut -d= -f2) \
+  --dart-define=GITHUB_CLIENT_SECRET=$(grep GITHUB_CLIENT_SECRET .env | cut -d= -f2)
 
 # Prod
 flutter run \
   --flavor prod \
   --target lib/main_prod.dart \
-  --dart-define=GEMINI_API_KEY=your_key_here
+  --dart-define=GEMINI_API_KEY=$(grep GEMINI_API_KEY .env | cut -d= -f2) \
+  --dart-define=GITHUB_CLIENT_ID=$(grep GITHUB_CLIENT_ID .env | cut -d= -f2) \
+  --dart-define=GITHUB_CLIENT_SECRET=$(grep GITHUB_CLIENT_SECRET .env | cut -d= -f2)
 ```
 
-> Never commit your API key. Pass it via `--dart-define` at runtime only.
+> Never commit your API keys. Pass them via `--dart-define` at runtime only.
+
+## CI / Distribution
+
+A GitHub Actions workflow (`.github/workflows/distribute.yml`) builds and distributes the **dev** flavor APK to Firebase App Distribution testers on manual trigger (`workflow_dispatch`).
+
+Required GitHub Secrets:
+
+| Secret | Description |
+|---|---|
+| `GEMINI_API_KEY` | Gemini API key |
+| `GITHUB_CLIENT_ID` | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
+| `FIREBASE_APP_ID` | Firebase App ID for the dev flavor |
+| `FIREBASE_TOKEN` | Firebase CLI token |
+| `FIREBASE_TESTER_GROUPS` | Tester group name (e.g. `tester`) |
 
 ## Testing
 
@@ -146,5 +176,6 @@ Selectable in Settings:
 
 | Model | Use case |
 |---|---|
-| `gemini-2.0-flash` | Default — fast, cost-efficient |
+| `gemini-flash-latest` | Default — fast, cost-efficient, always up to date |
+| `gemini-2.0-flash` | Stable pinned version |
 | `gemini-2.5-pro` | Deeper analysis, slower |
