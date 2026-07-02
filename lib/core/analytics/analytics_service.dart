@@ -37,7 +37,7 @@ class AnalyticsService {
   Future<void> logSummaryGenerated(String repoId, {bool regenerated = false}) =>
       _analytics.logEvent(name: 'summary_generated', parameters: {
         'repo_id': repoId,
-        'regenerated': regenerated,
+        'regenerated': regenerated ? 1 : 0,
       });
 
   Future<void> logSummaryRateLimit(String repoId) =>
