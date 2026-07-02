@@ -1,6 +1,6 @@
 # GitMind
 
-A Flutter app that lets you explore your GitHub repositories through AI-powered summaries and contextual chat — built with clean architecture, Cubit state management, and Gemini AI [Video](https://www.linkedin.com/in/mostafa-elsayed-690148195/).
+A Flutter app that lets you explore your GitHub repositories through AI-powered summaries and contextual chat — built with clean architecture, Cubit state management, and Gemini AI [Video](https://www.linkedin.com/feed/update/urn:li:activity:7478356838674247681/).
 
 ## Features
 
