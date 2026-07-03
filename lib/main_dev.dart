@@ -10,6 +10,7 @@ import 'core/theme/theme_cubit.dart';
 import 'firebase_options.dart';
 import 'features/profile/domain/entities/user_entity.dart';
 import 'features/repo_list/data/datasources/repo_data_source.dart';
+import 'features/repo_list/domain/entities/repo_entity.dart';
 import 'features/repo_list/presentation/cubit/repo_list_cubit.dart';
 import 'features/settings/presentation/cubit/settings_cubit.dart';
 import 'features/sign_in/domain/repositories/auth_repository.dart';
@@ -19,7 +20,6 @@ import 'features/repo_detail/presentation/screens/repo_detail_screen.dart';
 import 'features/profile/presentation/screens/profile_screen.dart';
 import 'features/settings/presentation/screens/settings_screen.dart';
 import 'features/chat/presentation/screens/chat_screen.dart';
-import 'features/repo_list/domain/entities/repo_entity.dart';
 import 'features/splash/presentation/screens/splash_screen.dart';
 
 void main() async {
@@ -39,8 +39,6 @@ void main() async {
 final _navigatorKey = GlobalKey<NavigatorState>();
 
 void _onSignIn(UserEntity user) {
-  if (getIt.isRegistered<UserEntity>()) getIt.unregister<UserEntity>();
-  getIt.registerSingleton<UserEntity>(user);
   _navigatorKey.currentState?.pushReplacement(
     MaterialPageRoute(
       builder: (_) => RepoListScreen(

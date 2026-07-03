@@ -8,20 +8,25 @@ import '../../features/chat/data/services/gemini_chat_service.dart';
 import '../../features/chat/domain/repositories/chat_repository.dart';
 import '../../features/chat/domain/usecases/send_message_use_case.dart';
 import '../../features/chat/presentation/cubit/send_message_cubit.dart';
+import '../../features/profile/data/datasources/profile_data_source.dart';
+import '../../features/profile/data/repositories/profile_repository_impl.dart';
+import '../../features/profile/domain/repositories/profile_repository.dart';
+import '../../features/profile/domain/usecases/get_profile_usecase.dart';
+import '../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../features/repo_detail/domain/usecases/generate_summary_usecase.dart';
+import '../../features/repo_detail/domain/usecases/get_repo_detail_usecase.dart';
+import '../../features/repo_detail/presentation/cubit/repo_detail_cubit.dart';
 import '../../features/repo_list/data/datasources/github_repo_data_source.dart';
+import '../../features/repo_list/data/datasources/github_repo_http_source.dart';
+import '../../features/repo_list/data/datasources/repo_data_source.dart';
+import '../../features/repo_list/data/datasources/repo_summary_data_source.dart';
 import '../../features/repo_list/data/datasources/repo_summary_db.dart';
 import '../../features/repo_list/data/services/gemini_repo_summary_service.dart';
-import '../../features/repo_list/data/datasources/repo_data_source.dart';
 import '../../features/repo_list/data/repositories/repo_repository_impl.dart';
 import '../../features/repo_list/domain/repositories/repo_repository.dart';
 import '../../features/repo_list/domain/usecases/get_repos_usecase.dart';
-import '../../features/repo_list/domain/usecases/get_repo_detail_usecase.dart';
-import '../../features/repo_list/domain/usecases/generate_summary_usecase.dart';
 import '../../features/repo_list/domain/usecases/clear_summaries_usecase.dart';
 import '../../features/repo_list/presentation/cubit/repo_list_cubit.dart';
-import '../../features/repo_detail/presentation/cubit/repo_detail_cubit.dart';
-import '../../features/profile/domain/entities/user_entity.dart';
-import '../../features/profile/presentation/cubit/profile_cubit.dart';
 import '../../features/settings/data/repositories/settings_repository_impl.dart';
 import '../../features/settings/domain/repositories/settings_repository.dart';
 import '../../features/settings/presentation/cubit/settings_cubit.dart';
@@ -55,8 +60,9 @@ void setupDependencies(AppConfig config) {
   getIt.registerLazySingleton<SettingsRepository>(
     () => SettingsRepositoryImpl(),
   );
-  getIt.registerLazySingleton<SettingsCubit>(
-    () => SettingsCubit(getIt(), getIt(), getIt()),
+  getIt.registerFactory<SettingsCubit>(
+    () => SettingsCubit(getIt(), getIt(), getIt(),
+        analytics: getIt<AnalyticsService>()),
   );
 
   // Repos
@@ -64,11 +70,20 @@ void setupDependencies(AppConfig config) {
     () => GeminiRepoSummaryService(config.geminiApiKey),
   );
   getIt.registerLazySingleton<RepoSummaryDb>(() => RepoSummaryDb());
-  getIt.registerLazySingleton<RepoDataSource>(
-    () => GitHubRepoDataSource(
+  getIt.registerLazySingleton<GitHubRepoHttpSource>(
+    () => GitHubRepoHttpSource(),
+  );
+  getIt.registerLazySingleton<RepoSummaryDataSource>(
+    () => RepoSummaryDataSource(
       gemini: getIt(),
       db: getIt(),
       settingsRepo: getIt(),
+    ),
+  );
+  getIt.registerLazySingleton<RepoDataSource>(
+    () => GitHubRepoDataSource(
+      http: getIt(),
+      summary: getIt(),
     ),
   );
   getIt.registerLazySingleton<RepoRepository>(
@@ -90,10 +105,22 @@ void setupDependencies(AppConfig config) {
     () => RepoListCubit(getIt()),
   );
   getIt.registerFactory<RepoDetailCubit>(
-    () => RepoDetailCubit(getIt(), getIt(), getIt()),
+    () => RepoDetailCubit(getIt(), getIt(), getIt(),
+        analytics: getIt<AnalyticsService>()),
+  );
+
+  // Profile
+  getIt.registerLazySingleton<ProfileDataSource>(
+    () => ProfileDataSource(),
+  );
+  getIt.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(getIt()),
+  );
+  getIt.registerLazySingleton<GetProfileUseCase>(
+    () => GetProfileUseCase(getIt()),
   );
   getIt.registerFactory<ProfileCubit>(
-    () => ProfileCubit(getIt(), getIt<AuthRepository>().currentUser ?? kMockUser),
+    () => ProfileCubit(getIt(), getIt()),
   );
 
   // Chat / Gemini
@@ -101,7 +128,7 @@ void setupDependencies(AppConfig config) {
     () => GeminiChatService(apiKey: config.geminiApiKey),
   );
   getIt.registerLazySingleton<ChatRepository>(
-    () => GeminiChatRepositoryImpl(getIt()),
+    () => GeminiChatRepositoryImpl(getIt(), getIt()),
   );
   getIt.registerLazySingleton<SendMessageUseCase>(
     () => SendMessageUseCase(getIt()),

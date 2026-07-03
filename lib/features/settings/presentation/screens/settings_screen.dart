@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/config/dev_fixtures.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/widgets/top_bar.dart';
 import '../../../repo_list/presentation/cubit/repo_list_cubit.dart';
-import '../../../profile/domain/entities/user_entity.dart';
 import '../../domain/entities/settings_entity.dart';
 import '../cubit/settings_cubit.dart';
 import '../cubit/settings_state.dart';

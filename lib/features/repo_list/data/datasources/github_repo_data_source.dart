@@ -1,35 +1,23 @@
-import 'dart:convert';
-
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 
-import '../../../../core/error/app_exception.dart';
-import '../../../../features/settings/domain/repositories/settings_repository.dart';
 import '../../domain/entities/repo_summary_entity.dart';
 import '../models/repo_model.dart';
-import '../services/gemini_repo_summary_service.dart';
+import 'github_repo_http_source.dart';
 import 'repo_data_source.dart';
-import 'repo_summary_db.dart';
+import 'repo_summary_data_source.dart';
 
 class GitHubRepoDataSource implements RepoDataSource {
   final FlutterSecureStorage _storage;
-  final GeminiRepoSummaryService _gemini;
-  final RepoSummaryDb _db;
-  final SettingsRepository _settingsRepo;
-  List<RepoModel>? _cache;
-  final Map<String, RepoSummaryEntity> _summaryCache = {};
-  final Map<String, DateTime> _lastGeminiCall = {};
-  static const _throttleDuration = Duration(seconds: 10);
+  final GitHubRepoHttpSource _http;
+  final RepoSummaryDataSource _summary;
 
   GitHubRepoDataSource({
     FlutterSecureStorage? storage,
-    required GeminiRepoSummaryService gemini,
-    required RepoSummaryDb db,
-    required SettingsRepository settingsRepo,
+    required GitHubRepoHttpSource http,
+    required RepoSummaryDataSource summary,
   })  : _storage = storage ?? const FlutterSecureStorage(),
-        _gemini = gemini,
-        _db = db,
-        _settingsRepo = settingsRepo;
+        _http = http,
+        _summary = summary;
 
   Future<String> get _token async {
     final token = await _storage.read(key: 'github_access_token');
@@ -37,193 +25,42 @@ class GitHubRepoDataSource implements RepoDataSource {
     return token;
   }
 
-  Map<String, String> _headers(String token) => {
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/vnd.github.v3+json',
-      };
-
   @override
   Future<List<RepoModel>> getRepos() async {
     final token = await _token;
-    final response = await http.get(
-      Uri.parse(
-          'https://api.github.com/user/repos?per_page=100&sort=updated&type=all'),
-      headers: _headers(token),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('GitHub API error: ${response.statusCode}');
-    }
-
-    final list = jsonDecode(response.body) as List<dynamic>;
-    final repos = list
-        .map((json) => RepoModel.fromGitHub(json as Map<String, dynamic>))
-        .toList();
-
-    // Load all persisted summaries in one query and merge into repo list
-    final persisted = await _db.getAll();
-    final merged = repos.map((r) {
-      final saved = persisted[r.id];
-      if (saved == null) return r;
-      _summaryCache[r.id] = saved;
-      return RepoModel(
-        id: r.id,
-        name: r.name,
-        owner: r.owner,
-        description: r.description,
-        language: r.language,
-        stars: r.stars,
-        updatedAgo: r.updatedAgo,
-        license: r.license,
-        lastCommit: r.lastCommit,
-        summarized: true,
-        summary: saved,
-      );
-    }).toList();
-
-    _cache = merged;
-    return merged;
+    final repos = await _http.getRepos(token);
+    return _summary.mergeWithDb(repos);
   }
 
   @override
   Future<RepoModel> getRepoById(String id) async {
-    if (_cache != null) {
-      final cached = _cache!.where((r) => r.id == id).firstOrNull;
-      if (cached != null) return cached;
-    }
-
+    final cached = _summary.cachedRepoById(id);
+    if (cached != null) return cached;
     final token = await _token;
-    final response = await http.get(
-      Uri.parse('https://api.github.com/repositories/$id'),
-      headers: _headers(token),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Repository not found');
-    }
-
-    return RepoModel.fromGitHub(
-        jsonDecode(response.body) as Map<String, dynamic>);
+    return _http.getRepoById(token, id);
   }
 
   @override
   Future<RepoSummaryEntity> generateSummary(String repoId,
       {bool force = false}) async {
-    final settings = await _settingsRepo.load();
-    final effectiveForce = force || !settings.cacheResults;
+    final cached = await _summary.getCached(repoId, force: force);
+    if (cached != null) return cached;
 
-    if (!effectiveForce) {
-      // 1. In-memory cache
-      if (_summaryCache.containsKey(repoId)) return _summaryCache[repoId]!;
-
-      // 2. Persistent DB cache
-      final saved = await _db.get(repoId);
-      if (saved != null) {
-        _summaryCache[repoId] = saved;
-        _applyToCache(repoId, saved);
-        return saved;
-      }
-    } else {
-      _summaryCache.remove(repoId);
-    }
-
-    // 3. Throttle — block rapid Gemini calls for the same repo
-    final lastCall = _lastGeminiCall[repoId];
-    if (lastCall != null && DateTime.now().difference(lastCall) < _throttleDuration) {
-      throw const RateLimitException();
-    }
-    _lastGeminiCall[repoId] = DateTime.now();
-
-    // 4. Call Gemini
-    final repo = await getRepoById(repoId);
     final token = await _token;
+    final repo = await getRepoById(repoId);
 
     final results = await Future.wait([
-      http.get(
-        Uri.parse(
-            'https://api.github.com/repos/${repo.owner}/${repo.name}/languages'),
-        headers: _headers(token),
-      ),
-      http.get(
-        Uri.parse(
-            'https://api.github.com/repos/${repo.owner}/${repo.name}/readme'),
-        headers: _headers(token),
-      ),
+      _http.getLanguages(token, repo.owner, repo.name),
+      _http.getReadme(token, repo.owner, repo.name),
     ]);
 
-    final langResponse = results[0];
-    final readmeResponse = results[1];
-
-    final languages = langResponse.statusCode == 200
-        ? (jsonDecode(langResponse.body) as Map<String, dynamic>)
-            .cast<String, int>()
-        : <String, int>{};
-
-    String readme = '';
-    if (readmeResponse.statusCode == 200) {
-      final readmeJson =
-          jsonDecode(readmeResponse.body) as Map<String, dynamic>;
-      final encoded = readmeJson['content'] as String? ?? '';
-      readme = utf8.decode(base64.decode(encoded.replaceAll('\n', '')));
-    }
-
-    final summary = await _gemini.summarize(
-      name: repo.name,
-      owner: repo.owner,
-      description: repo.description,
-      language: repo.language,
-      languages: languages,
-      stars: repo.stars,
-      readme: readme,
-      model: settings.geminiModel,
+    return _summary.fetchFromGemini(
+      repo: repo,
+      languages: results[0] as Map<String, int>,
+      readme: results[1] as String,
     );
-
-    // Persist and cache
-    await _db.save(repoId, summary);
-    _summaryCache[repoId] = summary;
-    _applyToCache(repoId, summary);
-
-    return summary;
   }
 
   @override
-  Future<void> clearSummaries() async {
-    _summaryCache.clear();
-    await _db.deleteAll();
-    if (_cache != null) {
-      _cache = _cache!.map((r) => RepoModel(
-            id: r.id,
-            name: r.name,
-            owner: r.owner,
-            description: r.description,
-            language: r.language,
-            stars: r.stars,
-            updatedAgo: r.updatedAgo,
-            license: r.license,
-            lastCommit: r.lastCommit,
-            summarized: false,
-            summary: null,
-          )).toList();
-    }
-  }
-
-  void _applyToCache(String repoId, RepoSummaryEntity summary) {
-    if (_cache == null) return;
-    _cache = _cache!.map((r) {
-      if (r.id != repoId) return r;
-      return RepoModel(
-        id: r.id,
-        name: r.name,
-        owner: r.owner,
-        description: r.description,
-        language: r.language,
-        stars: r.stars,
-        updatedAgo: r.updatedAgo,
-        license: r.license,
-        lastCommit: r.lastCommit,
-        summarized: true,
-        summary: summary,
-      );
-    }).toList();
-  }
+  Future<void> clearSummaries() => _summary.clearSummaries();
 }

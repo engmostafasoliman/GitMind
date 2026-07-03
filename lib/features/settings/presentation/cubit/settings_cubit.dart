@@ -13,9 +13,12 @@ class SettingsCubit extends Cubit<SettingsState> {
   final SettingsRepository _repo;
   final ThemeCubit _themeCubit;
   final ClearSummariesUseCase _clearSummaries;
+  final AnalyticsService _analytics;
 
-  SettingsCubit(this._repo, this._themeCubit, this._clearSummaries)
-      : super(const SettingsLoading());
+  SettingsCubit(this._repo, this._themeCubit, this._clearSummaries,
+      {AnalyticsService? analytics})
+      : _analytics = analytics ?? getIt<AnalyticsService>(),
+        super(const SettingsLoading());
 
   Future<void> load() async {
     final settings = await _repo.load();
@@ -33,7 +36,7 @@ class SettingsCubit extends Cubit<SettingsState> {
   }
 
   Future<void> setGeminiModel(String model) async {
-    getIt<AnalyticsService>().logModelChanged(model);
+    _analytics.logModelChanged(model);
     return _update(_current.copyWith(geminiModel: model));
   }
 

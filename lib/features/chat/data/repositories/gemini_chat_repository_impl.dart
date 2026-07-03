@@ -1,5 +1,6 @@
 import '../../../../core/error/app_exception.dart';
 import '../../../../core/result/api_result.dart';
+import '../../../settings/domain/repositories/settings_repository.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../models/chat_message_model.dart';
@@ -7,14 +8,17 @@ import '../services/gemini_chat_service.dart';
 
 class GeminiChatRepositoryImpl implements ChatRepository {
   final GeminiChatService _service;
+  final SettingsRepository _settingsRepo;
 
-  const GeminiChatRepositoryImpl(this._service);
+  const GeminiChatRepositoryImpl(this._service, this._settingsRepo);
 
   static const _maxVisibleHistory = 10;
 
   @override
   Future<ApiResult<ChatMessage>> sendMessage(List<ChatMessage> messages) async {
     try {
+      final settings = await _settingsRepo.load();
+
       // Always include hidden system context; cap visible history to last N
       final hidden = messages.where((m) => m.isHidden).toList();
       final visible = messages.where((m) => !m.isHidden).toList();
@@ -32,7 +36,8 @@ class GeminiChatRepositoryImpl implements ChatRepository {
               ))
           .toList();
 
-      final response = await _service.sendMessages(models);
+      final response = await _service.sendMessages(models,
+          model: settings.geminiModel);
 
       return ApiSuccess(ChatMessage(role: response.role, text: response.text));
     } on RateLimitException {

@@ -1,6 +1,5 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:chaty_ai_agent/core/analytics/analytics_service.dart';
-import 'package:chaty_ai_agent/core/di/injection.dart';
 import 'package:chaty_ai_agent/core/theme/theme_cubit.dart';
 import 'package:chaty_ai_agent/features/repo_list/domain/repositories/repo_repository.dart';
 import 'package:chaty_ai_agent/features/repo_list/domain/usecases/clear_summaries_usecase.dart';
@@ -37,20 +36,10 @@ void main() {
     when(() => mockRepo.save(any())).thenAnswer((_) async {});
     when(() => mockRepoRepository.clearSummaries()).thenAnswer((_) async {});
     when(() => mockAnalytics.logModelChanged(any())).thenAnswer((_) async {});
-
-    if (getIt.isRegistered<AnalyticsService>()) {
-      getIt.unregister<AnalyticsService>();
-    }
-    getIt.registerSingleton<AnalyticsService>(mockAnalytics);
   });
 
-  tearDown(() {
-    if (getIt.isRegistered<AnalyticsService>()) {
-      getIt.unregister<AnalyticsService>();
-    }
-  });
-
-  SettingsCubit buildCubit() => SettingsCubit(mockRepo, themeCubit, clearSummaries);
+  SettingsCubit buildCubit() =>
+      SettingsCubit(mockRepo, themeCubit, clearSummaries, analytics: mockAnalytics);
 
   group('SettingsCubit — load()', () {
     blocTest<SettingsCubit, SettingsState>(

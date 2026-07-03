@@ -22,8 +22,10 @@ class GeminiChatService {
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 2);
 
-  Future<ChatMessageModel> sendMessages(List<ChatMessageModel> messages) async {
-    final uri = Uri.parse('$_baseUrl/$model:generateContent');
+  Future<ChatMessageModel> sendMessages(List<ChatMessageModel> messages,
+      {String? model}) async {
+    final effectiveModel = model ?? this.model;
+    final uri = Uri.parse('$_baseUrl/$effectiveModel:generateContent');
     final body = jsonEncode({
       'contents': messages.map((m) => m.toJson()).toList(),
     });
