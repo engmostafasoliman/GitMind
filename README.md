@@ -12,7 +12,7 @@ A Flutter app that lets you explore your GitHub repositories through AI-powered 
 - **Token optimization** — summary prompt ~50% smaller (1500-char README cap, compact format); chat history capped at last 10 visible messages
 - **Rate limit handling** — 429 responses trigger a 15-second countdown with auto-retry in both chat and summaries
 - **SQLite persistence** — summaries cached locally; cleared on sign-out
-- **Profile screen** — GitHub avatar, bio, stats, and owned repos
+- **Profile screen** — real GitHub avatar, bio, follower count, and owned repos fetched live from the GitHub API
 - **Settings** — model selection, auto-summarize toggle, cache control
 - **Animated splash screen** and shimmer skeletons on all loading states
 - **Dark / light theme** toggle
@@ -46,6 +46,9 @@ Strict layered architecture: **presentation → domain → data**
 ```
 lib/
 ├── core/
+│   ├── analytics/      # AnalyticsService — Firebase event logging
+│   ├── config/         # AppConfig (flavors, API keys), dev_fixtures
+│   ├── constants/      # Language colour map
 │   ├── di/             # get_it dependency registration
 │   ├── error/          # AppException sealed class (RateLimitException, ServerException, …)
 │   ├── result/         # ApiResult<T> — ApiSuccess / ApiFailure / ApiRateLimit
@@ -53,11 +56,11 @@ lib/
 │   └── widgets/        # TopBar, ShimmerBox, StatusPill
 │
 └── features/
-    ├── chat/           # GitMind AI chat with repo context, cooldown, 429 countdown
-    ├── profile/        # GitHub user profile, avatar, stats, owned repos
+    ├── chat/           # GitMind AI chat — repo context, 5s cooldown, 429 countdown
+    ├── profile/        # Real GitHub user profile fetched via /user API
     ├── repo_detail/    # Repo header, AI summary, re-summarize, rate-limit banner
     ├── repo_list/      # GitHub repos, search/filter/sort, debounce, Gemini throttle
-    ├── settings/       # Model picker, auto-summarize, cache, persistence
+    ├── settings/       # Model picker, auto-summarize, cache, accent colour
     ├── sign_in/        # Firebase GitHub OAuth, token storage, session persistence
     └── splash/         # Animated splash with session check
 ```
@@ -65,18 +68,29 @@ lib/
 Each feature follows:
 ```
 data/
-  datasources/    # API calls, SQLite, secure storage
+  datasources/    # API calls, SQLite, secure storage — one responsibility per class
   models/         # JSON ↔ entity mapping
-  repositories/   # Impl — catches exceptions, returns ApiResult
+  repositories/   # Impl — catches exceptions, maps to ApiResult
 domain/
-  entities/       # Pure Dart — no Flutter imports
+  entities/       # Pure Dart — zero Flutter imports
   repositories/   # Abstract interface
-  usecases/       # Single-purpose use cases
+  usecases/       # Single-purpose, one public method each
 presentation/
   cubit/          # State logic, Timer-based countdowns, debounce
   screens/        # UI — observes state, zero business logic
   widgets/        # Reusable screen-level widgets, skeletons
 ```
+
+### Key design decisions
+
+| Decision | Detail |
+|---|---|
+| **Datasource split** | `GitHubRepoHttpSource` (pure HTTP) + `RepoSummaryDataSource` (cache + throttle + Gemini + SQLite); orchestrated by a thin `GitHubRepoDataSource` |
+| **No cross-feature domain imports** | `GetRepoDetailUseCase` and `GenerateSummaryUseCase` live in `repo_detail/domain/` — only used there |
+| **Constructor-injected analytics** | `AnalyticsService` passed via constructor in all cubits; no `getIt` calls inside logic |
+| **Factory cubits** | All cubits registered as `registerFactory` — fresh instance per screen, no stale state |
+| **Reactive model selection** | Chat reads `geminiModel` from `SettingsRepository` at each send call — settings change takes effect immediately |
+| **Real profile data** | `ProfileCubit` fetches user from `GET /user` via `GetProfileUseCase`; no hardcoded mock in production |
 
 ## Error Handling
 
@@ -165,14 +179,17 @@ Required GitHub Secrets:
 flutter test
 ```
 
-**80 tests — all passing.** Coverage across:
+**90 tests — all passing.** Coverage across:
 
 | File | What's tested |
 |---|---|
 | `SendMessageCubit` | All states, cooldown, rate-limit countdown, GitMind persona init, empty/whitespace guard |
-| `GeminiChatRepositoryImpl` | Success, all error types, history trimming (cap at 10 visible, preserve hidden context) |
+| `GeminiChatRepositoryImpl` | Success, all error types, history trimming, reactive model selection from settings |
 | `RepoListCubit` | Load success/failure, 300ms debounce on search, rapid-call cancellation, filter, sort, clearFilters |
 | `AuthRepositoryImpl` | `getPersistedUser()` session persistence — returns user when Firebase session exists, null when not, clears on sign-out |
+| `ProfileRepositoryImpl` | Success with real GitHub user, missing token, unauthorized, generic HTTP error |
+| `GetProfileUseCase` | Delegates to repository |
+| `ProfileCubit` | Load with real user + owned repo filtering, profile failure, repos failure |
 | `AnalyticsService` | `regenerated` param is always `int` (0/1), never `bool`; `logRepoViewed`, `logModelChanged` params |
 | `SettingsCubit` | Load, all setters, accent propagation to ThemeCubit, clearSummaries delegation |
 | `SettingsEntity` | `copyWith`, defaults, field preservation |
